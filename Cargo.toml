@@ -18,6 +18,9 @@ log = "0.4"
 
 # You only need serde if you want app persistence:
 serde = { version = "1", features = ["derive"] }
+instant = { version = "0.1.12", features = ["wasm-bindgen", "inaccurate"] }
+rand = "0.8.5"
+getrandom = { version = "0.2.12", features = ["js"] }
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
