@@ -199,7 +199,11 @@ impl Map {
                 Rounding::ZERO,
                 //TODO: Add a slider for the user on this one that allows them to choose the color
                 //if they want
-                if self.light_mode {Color32::BLACK} else {Color32::WHITE},
+                if self.light_mode() {
+                    Color32::BLACK,
+                }else{
+                    Color32::WHITE,
+                }
             ));
         }
     }

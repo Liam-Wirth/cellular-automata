@@ -1,6 +1,6 @@
 [package]
 name = "Cellular-Automata"
-version = "0.0.0.0.0.1"
+version = "0.0.10"
 authors = ["Liam Wirth"]
 edition = "2021"
 rust-version = "1.72"

@@ -43,7 +43,7 @@ impl App {
         if let Some(storage) = cc.storage {
             return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
         }
-        
+
         Default::default()
     }
 }
@@ -59,6 +59,7 @@ impl eframe::App for App {
         // Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
         // For inspiration and more examples, go to https://emilk.github.io/egui
 
+        self.map.light_mode = (ctx.style().visuals == egui::Visuals::light());
         ctx.request_repaint();
         egui::SidePanel::left("Menu").show(ctx, |ui| {
             ui.add(
@@ -71,8 +72,8 @@ impl eframe::App for App {
                 egui::Slider::new(&mut self.map.rand_scarcity, 0..=10)
                     .step_by(1.0)
                     .orientation(egui::SliderOrientation::Horizontal)
-                    .text("Scarcity of generated cells, higher = more sparsely placed")
-                );
+                    .text("Scarcity of generated cells, higher = more sparsely placed"),
+            );
 
             ui.add(
                 egui::Slider::new(&mut self.map.fps, 1..=60)
@@ -135,19 +136,30 @@ impl eframe::App for App {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-
             let painter = egui::Painter::new(
                 ui.ctx().clone(),
                 ui.layer_id(),
-                ui.available_rect_before_wrap()
-                );
-             ui.expand_to_include_rect(painter.clip_rect());
+                ui.available_rect_before_wrap(),
+            );
+            ui.expand_to_include_rect(painter.clip_rect());
             self.rect = Some(painter.clip_rect());
-            let mut shapes = vec![egui::Shape::rect_filled(self.rect.unwrap(), egui::Rounding::ZERO, egui::Color32::WHITE)];
-            if ctx.style().visuals==egui::Visuals::light(){
-            shapes = vec![egui::Shape::rect_filled(self.rect.unwrap(), egui::Rounding::ZERO, egui::Color32::WHITE)];
+            let mut shapes = vec![egui::Shape::rect_filled(
+                self.rect.unwrap(),
+                egui::Rounding::ZERO,
+                egui::Color32::WHITE,
+            )];
+            if self.map.light_mode {
+                shapes = vec![egui::Shape::rect_filled(
+                    self.rect.unwrap(),
+                    egui::Rounding::ZERO,
+                    egui::Color32::WHITE,
+                )];
             } else {
-            shapes = vec![egui::Shape::rect_filled(self.rect.unwrap(), egui::Rounding::ZERO, egui::Color32::BLACK)];
+                shapes = vec![egui::Shape::rect_filled(
+                    self.rect.unwrap(),
+                    egui::Rounding::ZERO,
+                    egui::Color32::BLACK,
+                )];
             }
             self.map.generate_cells(&mut shapes, self.rect.unwrap());
             painter.extend(shapes);
