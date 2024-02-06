@@ -1,7 +1,15 @@
+use crate::connway;
+use connway::connway_map;
+use connway::connway_map::Map;
+use eframe::egui;
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
-pub struct TemplateApp {
+pub struct App {
+    map: connway::connway_map::Map,
+    running: bool,
+    filename: String,
+    rect: Option<egui::Rect>,
     // Example stuff:
     label: String,
 
@@ -9,17 +17,23 @@ pub struct TemplateApp {
     value: f32,
 }
 
-impl Default for TemplateApp {
+impl Default for App {
     fn default() -> Self {
+        let mut map = connway_map::Map::new();
+        map.gen_random();
         Self {
             // Example stuff:
+            map,
+            running: false,
             label: "Hello World!".to_owned(),
+            filename: "".to_owned(),
+            rect: None,
             value: 2.7,
         }
     }
 }
 
-impl TemplateApp {
+impl App {
     /// Called once before the first frame.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customize the look and feel of egui using
@@ -35,7 +49,7 @@ impl TemplateApp {
     }
 }
 
-impl eframe::App for TemplateApp {
+impl eframe::App for App {
     /// Called by the frame work to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
@@ -45,6 +59,62 @@ impl eframe::App for TemplateApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
         // For inspiration and more examples, go to https://emilk.github.io/egui
+
+        ctx.request_repaint();
+        egui::SidePanel::left("Menu").show(ctx, |ui| {
+            ui.add(
+                egui::Slider::new(&mut self.map.cell_size, 0.1..=50.0)
+                    .step_by(0.1)
+                    .orientation(egui::SliderOrientation::Horizontal)
+                    .text("Cell Size"),
+            );
+            ui.add(
+                egui::Slider::new(&mut self.map.rand_scarcity, 0..=10)
+                    .step_by(1.0)
+                    .orientation(egui::SliderOrientation::Horizontal)
+                    .text("Scarcity of generated cells, higher = more sparsely placed")
+                );
+
+            ui.add(
+                egui::Slider::new(&mut self.map.fps, 1..=60)
+                    .step_by(1.0)
+                    .orientation(egui::SliderOrientation::Horizontal)
+                    .text("FPS"),
+            );
+            self.map.update_speed();
+
+            ui.add(
+                egui::Slider::new(&mut self.map.x_axis, -1000..=1000)
+                    .step_by(1.0)
+                    .orientation(egui::SliderOrientation::Horizontal)
+                    .text("X Axis"),
+            );
+            ui.add(
+                egui::Slider::new(&mut self.map.y_axis, -1000..=1000)
+                    .step_by(1.0)
+                    .orientation(egui::SliderOrientation::Horizontal)
+                    .text("Y Axis"),
+            );
+            ui.add(
+                egui::Slider::new(&mut self.map.map_size, 10..=500)
+                    .step_by(1.0)
+                    .orientation(egui::SliderOrientation::Horizontal)
+                    .text("Board Size"),
+            );
+
+            ui.horizontal(|ui| {
+                if ui.add(egui::Button::new("Toggle")).clicked() {
+                    self.running = !self.running;
+                }
+                if ui.add(egui::Button::new("Random")).clicked() {
+                    self.map.gen_random();
+                    self.map.center_cells(self.rect.unwrap());
+                }
+                if ui.add(egui::Button::new("Clean")).clicked() {
+                    self.map.clean();
+                }
+            });
+        });
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:
@@ -66,30 +136,25 @@ impl eframe::App for TemplateApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            // The central panel the region left after adding TopPanel's and SidePanel's
-            ui.heading("eframe template");
 
-            ui.horizontal(|ui| {
-                ui.label("Write something: ");
-                ui.text_edit_singleline(&mut self.label);
-            });
-
-            ui.add(egui::Slider::new(&mut self.value, 0.0..=10.0).text("value"));
-            if ui.button("Increment").clicked() {
-                self.value += 1.0;
+            let painter = egui::Painter::new(
+                ui.ctx().clone(),
+                ui.layer_id(),
+                ui.available_rect_before_wrap()
+                );
+             ui.expand_to_include_rect(painter.clip_rect());
+            self.rect = Some(painter.clip_rect());
+            let mut shapes = vec![egui::Shape::rect_filled(self.rect.unwrap(), egui::Rounding::ZERO, egui::Color32::WHITE)];
+            if ctx.style().visuals==egui::Visuals::light(){
+            shapes = vec![egui::Shape::rect_filled(self.rect.unwrap(), egui::Rounding::ZERO, egui::Color32::WHITE)];
+            } else {
+            shapes = vec![egui::Shape::rect_filled(self.rect.unwrap(), egui::Rounding::ZERO, egui::Color32::BLACK)];
             }
-
-            ui.separator();
-
-            ui.add(egui::github_link_file!(
-                "https://github.com/emilk/eframe_template/blob/master/",
-                "Source code."
-            ));
-
-            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                powered_by_egui_and_eframe(ui);
-                egui::warn_if_debug_build(ui);
-            });
+            self.map.generate_cells(&mut shapes, self.rect.unwrap());
+            painter.extend(shapes);
+            if self.running {
+                self.map.update();
+            }
         });
     }
 }

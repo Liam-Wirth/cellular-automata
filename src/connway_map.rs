@@ -33,7 +33,6 @@ pub struct Map {
     pub speed: u128,
     pub fps: u32,
     pub rand_scarcity: u32,
-    pub light_mode: bool,
     #[serde(skip)] 
     last_frame_time: Instant,
     #[serde(skip)] 
@@ -71,8 +70,7 @@ impl Map {
             cell_size: 0.0,
             x_axis: 0,
             y_axis: 0,
-            rand_scarcity: 3 as u32,
-            light_mode: true,
+            rand_scarcity: 3,
         }
     }
     pub fn update_speed(&mut self) {
@@ -94,7 +92,7 @@ impl Map {
         for y in 0..=self.map_size {
             for x in 0..self.map_size {
                 let mut rng = thread_rng();
-                let probability = rng.gen_range(0..=self.rand_scarcity);
+                let probability = rng.gen_range(0..=3);
                 if probability == 1 {
                     self.cells.insert(Pos(x, y));
                 }
@@ -199,7 +197,7 @@ impl Map {
                 Rounding::ZERO,
                 //TODO: Add a slider for the user on this one that allows them to choose the color
                 //if they want
-                Color32::GRAY,
+                Color32::BLACK,
             ));
         }
     }
