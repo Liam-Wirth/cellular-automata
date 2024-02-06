@@ -1,5 +1,5 @@
 [package]
-name = "Cellular-Automata"
+name = "cellular_automata"
 version = "0.0.10"
 authors = ["Liam Wirth"]
 edition = "2021"
