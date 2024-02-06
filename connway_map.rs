@@ -1,12 +1,10 @@
-//CREDIT TO https://github.com/xcdkz his GPL'd code helped serve as a springboard for this entire
-//project
 use std::{collections::HashSet, fs};
 
 use egui::{vec2, Color32, Rect, Rounding, Shape};
 use instant::{Duration, Instant};
 use rand::{thread_rng, Rng};
 
-#[repr(u8)] // NOTE: we would want this to be a single byte apparently!
+#[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConnwayCell {
     Alive = 1,
@@ -16,7 +14,6 @@ pub enum ConnwayCell {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct Pos(pub i32, pub i32);
-
 
 impl Default for Pos {
     fn default() -> Self {
@@ -34,9 +31,10 @@ pub struct Map {
     pub fps: u32,
     pub rand_scarcity: u32,
     pub light_mode: bool,
-    #[serde(skip)] 
+    pub lines: bool,
+    #[serde(skip)]
     last_frame_time: Instant,
-    #[serde(skip)] 
+    #[serde(skip)]
     cells: HashSet<Pos>,
 }
 /// "Neighbor" cells around the current cell, coordinates are organized in standard x,y format
@@ -73,26 +71,55 @@ impl Map {
             y_axis: 0,
             rand_scarcity: 3 as u32,
             light_mode: true,
+            lines: false,
         }
     }
     pub fn update_speed(&mut self) {
         self.speed = Map::fps_to_speed(self.fps as f32);
     }
+    // pub fn neighbors(&self, p: &Pos) -> usize {
+    //     let mut neighbors = 0;
+    //     for i in NEIGHBORS {
+    //         if self.cells.contains(&Pos(p.0 + i.0, p.1 + i.1)) {
+    //             neighbors += 1;
+    //         }
+    //     }
+    //     neighbors
+    // }
+    //TODO: Below, I have a new toroidal function for neighbor checking, and above, I have a more
+    //naive check, maybe later look into seeing if it is possible to toggle between say "hard"
+    //walls and toroidal walls that just tile
     pub fn neighbors(&self, p: &Pos) -> usize {
         let mut neighbors = 0;
         for i in NEIGHBORS {
-            if self.cells.contains(&Pos(p.0 + i.0, p.1 + i.1)) {
+            let mut neighbor_pos = Pos(p.0 + i.0, p.1 + i.1);
+
+            // Apply periodic boundary conditions
+            if neighbor_pos.0 < 0 {
+                neighbor_pos.0 = self.map_size - 1;
+            } else if neighbor_pos.0 >= self.map_size {
+                neighbor_pos.0 = 0;
+            }
+
+            if neighbor_pos.1 < 0 {
+                neighbor_pos.1 = self.map_size - 1;
+            } else if neighbor_pos.1 >= self.map_size {
+                neighbor_pos.1 = 0;
+            }
+
+            if self.cells.contains(&neighbor_pos) {
                 neighbors += 1;
             }
         }
         neighbors
     }
+
     // TODO: I read something somewhere about how I could make my own efficient random number
     // generator, that could be fun, maybe I'll implement that here
     pub fn gen_random(&mut self) {
         self.cells = HashSet::new();
-        for y in 0..=self.map_size {
-            for x in 0..self.map_size {
+        for y in 0..=self.map_size - 4 {
+            for x in 0..=self.map_size - 4 {
                 let mut rng = thread_rng();
                 let probability = rng.gen_range(0..=self.rand_scarcity);
                 if probability == 1 {
@@ -119,7 +146,18 @@ impl Map {
         let mut checked = HashSet::new();
         for el in &self.cells {
             for step in NEIGHBORS {
-                let xy = Pos(el.0 + step.0, el.1 + step.1);
+                let mut xy = Pos(el.0 + step.0, el.1 + step.1);
+                if xy.0 < 0 {
+                    xy.0 = self.map_size - 1;
+                } else if xy.0 >= self.map_size {
+                    xy.0 = 0;
+                }
+
+                if xy.1 < 0 {
+                    xy.1 = self.map_size - 1;
+                } else if xy.1 >= self.map_size {
+                    xy.1 = 0;
+                }
                 if !checked.contains(&xy) {
                     checked.insert(xy);
                     let n = self.neighbors(&xy);
@@ -182,6 +220,34 @@ impl Map {
         self.cells = elems_c;
     }
     pub fn generate_cells(&self, shapes: &mut Vec<Shape>, rect: Rect) {
+        for i in 0..=self.map_size {
+            // Vertical grid lines
+            let x = rect.min.x + self.cell_size as f32 * i as f32 - self.x_axis as f32;
+            shapes.push(Shape::line_segment(
+                [
+                    egui::Pos2::new(x, rect.min.y),
+                    egui::Pos2::new(x, rect.max.y),
+                ],
+                egui::Stroke::new(
+                    1.0,
+                    if i == self.map_size {
+                        Color32::RED
+                    } else {
+                        Color32::GRAY
+                    },
+                ),
+            ));
+
+            // Horizontal grid lines
+            let y = rect.min.y + self.cell_size as f32 * i as f32 - self.y_axis as f32;
+            shapes.push(Shape::line_segment(
+                [
+                    egui::Pos2::new(rect.min.x, y),
+                    egui::Pos2::new(rect.max.x, y),
+                ],
+                egui::Stroke::new(1.0, Color32::GRAY),
+            ));
+        }
         for c in &self.cells {
             shapes.push(Shape::rect_filled(
                 Rect {
@@ -199,11 +265,11 @@ impl Map {
                 Rounding::ZERO,
                 //TODO: Add a slider for the user on this one that allows them to choose the color
                 //if they want
-                if self.light_mode() {
-                    Color32::BLACK,
-                }else{
-                    Color32::WHITE,
-                }
+                if self.light_mode {
+                    Color32::BLACK
+                } else {
+                    Color32::WHITE
+                },
             ));
         }
     }

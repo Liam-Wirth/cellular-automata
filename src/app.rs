@@ -16,7 +16,8 @@ pub struct App {
     #[serde(skip)] // This how you opt-out of serialization of a field
     value: f32,
 }
-
+// TODO: implement feature so that the user can click and drag on the main view window to move
+// their view around instead of using sliders, cause sliders are janky as fuck
 impl Default for App {
     fn default() -> Self {
         let mut map = connway_map::Map::new();
@@ -112,6 +113,9 @@ impl eframe::App for App {
                 }
                 if ui.add(egui::Button::new("Clean")).clicked() {
                     self.map.clean();
+                }
+                if ui.add(egui::Button::new("Gridlines")).clicked() {
+                    self.map.lines = !self.map.lines; 
                 }
             });
         });
