@@ -1,7 +1,7 @@
 [package]
-name = "eframe_template"
-version = "0.1.0"
-authors = ["Emil Ernerfeldt <emil.ernerfeldt@gmail.com>"]
+name = "Cellular-Automata"
+version = "0.0.0.0.0.1"
+authors = ["Liam Wirth"]
 edition = "2021"
 rust-version = "1.72"
 

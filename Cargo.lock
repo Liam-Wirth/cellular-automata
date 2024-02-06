@@ -3,6 +3,21 @@
 version = 3
 
 [[package]]
+name = "Cellular-Automata"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "env_logger",
+ "getrandom",
+ "instant",
+ "log",
+ "rand",
+ "serde",
+ "wasm-bindgen-futures",
+]
+
+[[package]]
 name = "ab_glyph"
 version = "0.2.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -865,21 +880,6 @@ dependencies = [
  "web-time",
  "winapi",
  "winit",
-]
-
-[[package]]
-name = "eframe_template"
-version = "0.1.0"
-dependencies = [
- "eframe",
- "egui",
- "env_logger",
- "getrandom",
- "instant",
- "log",
- "rand",
- "serde",
- "wasm-bindgen-futures",
 ]
 
 [[package]]
