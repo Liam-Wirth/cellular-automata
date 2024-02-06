@@ -28,7 +28,6 @@ impl Default for Pos {
         Pos(0, 0)
     }
 }
-//to be reset after each regen or update of the board when running = false
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state

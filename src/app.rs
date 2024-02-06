@@ -144,7 +144,6 @@ impl eframe::App for App {
                 egui::widgets::global_dark_light_mode_buttons(ui);
             });
         });
-        if self.running {
             egui::CentralPanel::default().show(ctx, |ui| {
                 let painter = egui::Painter::new(
                     ui.ctx().clone(),
@@ -177,7 +176,6 @@ impl eframe::App for App {
                     self.map.update();
                 }
             });
-        }
     }
 }
 
