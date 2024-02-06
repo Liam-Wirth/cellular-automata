@@ -1,5 +1,3 @@
-//CREDIT TO https://github.com/xcdkz his GPL'd code helped serve as a springboard for this entire
-//project
 use std::{collections::HashSet, fs};
 
 use egui::{vec2, Color32, Rect, Rounding, Shape};
