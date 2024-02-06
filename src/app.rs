@@ -102,6 +102,12 @@ impl eframe::App for App {
                     .orientation(egui::SliderOrientation::Horizontal)
                     .text("Board Size"),
             );
+    //        ui.collapsing("Statistics", |ui| {
+    //            ui.label(format!("Generations: {}", self.map.stats.generations));
+    //            ui.label(format!("Births: {}", self.map.stats.births));
+    //            ui.label(format!("Deaths: {}", self.map.stats.deaths));
+    //            ui.label(format!("Current Population: {}", self.map.stats.population));
+    //        });
 
             ui.horizontal(|ui| {
                 if ui.add(egui::Button::new("Toggle")).clicked() {
@@ -115,7 +121,7 @@ impl eframe::App for App {
                     self.map.clean();
                 }
                 if ui.add(egui::Button::new("Gridlines")).clicked() {
-                    self.map.lines = !self.map.lines; 
+                    self.map.lines = !self.map.lines;
                 }
             });
         });
@@ -138,39 +144,40 @@ impl eframe::App for App {
                 egui::widgets::global_dark_light_mode_buttons(ui);
             });
         });
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let painter = egui::Painter::new(
-                ui.ctx().clone(),
-                ui.layer_id(),
-                ui.available_rect_before_wrap(),
-            );
-            ui.expand_to_include_rect(painter.clip_rect());
-            self.rect = Some(painter.clip_rect());
-            let mut shapes = vec![egui::Shape::rect_filled(
-                self.rect.unwrap(),
-                egui::Rounding::ZERO,
-                egui::Color32::WHITE,
-            )];
-            if self.map.light_mode {
-                shapes = vec![egui::Shape::rect_filled(
+        if self.running {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                let painter = egui::Painter::new(
+                    ui.ctx().clone(),
+                    ui.layer_id(),
+                    ui.available_rect_before_wrap(),
+                );
+                ui.expand_to_include_rect(painter.clip_rect());
+                self.rect = Some(painter.clip_rect());
+                let mut shapes = vec![egui::Shape::rect_filled(
                     self.rect.unwrap(),
                     egui::Rounding::ZERO,
                     egui::Color32::WHITE,
                 )];
-            } else {
-                shapes = vec![egui::Shape::rect_filled(
-                    self.rect.unwrap(),
-                    egui::Rounding::ZERO,
-                    egui::Color32::BLACK,
-                )];
-            }
-            self.map.generate_cells(&mut shapes, self.rect.unwrap());
-            painter.extend(shapes);
-            if self.running {
-                self.map.update();
-            }
-        });
+                if self.map.light_mode {
+                    shapes = vec![egui::Shape::rect_filled(
+                        self.rect.unwrap(),
+                        egui::Rounding::ZERO,
+                        egui::Color32::WHITE,
+                    )];
+                } else {
+                    shapes = vec![egui::Shape::rect_filled(
+                        self.rect.unwrap(),
+                        egui::Rounding::ZERO,
+                        egui::Color32::BLACK,
+                    )];
+                }
+                self.map.generate_cells(&mut shapes, self.rect.unwrap());
+                painter.extend(shapes);
+                if self.running {
+                    self.map.update();
+                }
+            });
+        }
     }
 }
 

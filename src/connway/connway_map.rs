@@ -1,3 +1,11 @@
+// TODO: In the future you need to refactor this for other simulations, take out the map logic, and
+// the drawing logic and isolate that in some other class in a more generalized manner, you would
+// keep the Map struct, but rename it to conway_map, and then for any other simulation you would
+// have it be (sim name)_Map struct or something. Then, you would use those structs to make the
+// draw calls you figured out/thought about in the main, kinda "super" Map class. this is where
+// being able to understand and use object oriented paradigms will come in handy. Maybe do it in a
+// vc over the weekend with byte. He seems excited about the project and would likely be willing
+// to help
 use std::{collections::HashSet, fs};
 
 use egui::{vec2, Color32, Rect, Rounding, Shape};
@@ -20,6 +28,8 @@ impl Default for Pos {
         Pos(0, 0)
     }
 }
+//to be reset after each regen or update of the board when running = false
+
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct Map {
@@ -32,6 +42,7 @@ pub struct Map {
     pub rand_scarcity: u32,
     pub light_mode: bool,
     pub lines: bool,
+
     #[serde(skip)]
     last_frame_time: Instant,
     #[serde(skip)]
@@ -90,28 +101,14 @@ impl Map {
     //naive check, maybe later look into seeing if it is possible to toggle between say "hard"
     //walls and toroidal walls that just tile
     pub fn neighbors(&self, p: &Pos) -> usize {
-        let mut neighbors = 0;
-        for i in NEIGHBORS {
+        NEIGHBORS.iter().fold(0, |neighbors, &i| {
             let mut neighbor_pos = Pos(p.0 + i.0, p.1 + i.1);
 
-            // Apply periodic boundary conditions
-            if neighbor_pos.0 < 0 {
-                neighbor_pos.0 = self.map_size - 1;
-            } else if neighbor_pos.0 >= self.map_size {
-                neighbor_pos.0 = 0;
-            }
+            neighbor_pos.0 = self.apply_periodic_boundary(neighbor_pos.0, self.map_size);
+            neighbor_pos.1 = self.apply_periodic_boundary(neighbor_pos.1, self.map_size);
 
-            if neighbor_pos.1 < 0 {
-                neighbor_pos.1 = self.map_size - 1;
-            } else if neighbor_pos.1 >= self.map_size {
-                neighbor_pos.1 = 0;
-            }
-
-            if self.cells.contains(&neighbor_pos) {
-                neighbors += 1;
-            }
-        }
-        neighbors
+            neighbors + self.cells.contains(&neighbor_pos) as usize
+        })
     }
 
     // TODO: I read something somewhere about how I could make my own efficient random number
@@ -147,17 +144,10 @@ impl Map {
         for el in &self.cells {
             for step in NEIGHBORS {
                 let mut xy = Pos(el.0 + step.0, el.1 + step.1);
-                if xy.0 < 0 {
-                    xy.0 = self.map_size - 1;
-                } else if xy.0 >= self.map_size {
-                    xy.0 = 0;
-                }
 
-                if xy.1 < 0 {
-                    xy.1 = self.map_size - 1;
-                } else if xy.1 >= self.map_size {
-                    xy.1 = 0;
-                }
+                xy.0 = self.apply_periodic_boundary(xy.0, self.map_size);
+                xy.1 = self.apply_periodic_boundary(xy.1, self.map_size);
+
                 if !checked.contains(&xy) {
                     checked.insert(xy);
                     let n = self.neighbors(&xy);
@@ -306,5 +296,12 @@ impl Map {
             }
         }
         self.cells = x;
+    }
+    fn apply_periodic_boundary(&self, coord: i32, axis_size: i32) -> i32 {
+        match coord {
+            x if x < 0 => axis_size - 1,
+            x if x >= axis_size => 0,
+            x => x,
+        }
     }
 }
