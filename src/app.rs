@@ -21,6 +21,7 @@ pub struct App {
     #[serde(skip)] // This how you opt-out of serialization of a field
     value: f32,
     view_stats: bool,
+    first_run: bool,
 }
 // TODO: implement feature so that the user can click and drag on the main view window to move
 // their view around instead of using sliders, cause sliders are janky as fuck
@@ -40,6 +41,7 @@ impl Default for App {
             value: 2.7,
             view_stats: false,
             reset: false,
+            first_run: true,
         }
     }
 }
@@ -121,37 +123,50 @@ impl eframe::App for App {
 
             ui.horizontal(|ui| {
                 let mut pause_play: &str = if self.running { "Pause" } else { "Play" };
-                ui.add_enabled_ui(self.running || !self.map.is_initial, |ui| {
-                    if ui.add(egui::Button::new(pause_play)).clicked() {
-                        self.running = !self.running;
-                    }
-                });
-                ui.add_enabled_ui(!self.running && self.map.is_initial, |ui| {
+                if ui.add(egui::Button::new(pause_play)).clicked() {
+                    self.running = !self.running;
+                }
+                ui.add_enabled_ui(!self.running, |ui| {
                     if ui
-                        .add(egui::Button::new("Start"))
-                        .on_hover_text("Start or Pause the simulation")
+                        .add(egui::Button::new("Save"))
+                        .on_hover_text("Save Current state of the grid to be reloaded later")
                         .clicked()
                     {
                         if !self.reset {
                             self.map.cache_initial_state();
                         }
-                        self.running = !self.running;
                         self.reset = false;
                     }
                 });
                 ui.add_enabled_ui(!self.running, |ui| {
                     if ui.add(egui::Button::new("Random")).clicked() {
                         self.map.gen_random();
+                        if self.first_run {
+                            // BUG: If the user saves their map, then updates the board size, the
+                            // previously saved layout gets overwritten. This is a good thing if
+                            // they shrink the board size, but honestly is a bad thing if they make
+                            // the board size bigger, because a bigger board size would have no
+                            // effect on a blueprint made in a smaller board size
+                            self.map.cache_initial_state();
+                        }
                         self.map.center_cells(self.rect.unwrap());
                     }
                 });
-                if ui.add(egui::Button::new("Reset")).clicked() {
+                if ui.add(egui::Button::new("Clear")).clicked() {
                     self.map.clear();
+                    self.running = false;
+                }
+                if ui.add(egui::Button::new("Revert")).on_hover_text("Revert to the saved state").clicked() {
+                    self.map.restore_initial_state();
                     self.running = false;
                 }
             });
             ui.horizontal(|ui| {
-                if ui.add(egui::Button::new("Gridlines")).on_hover_text("Toggle visible gridlines").clicked() {
+                if ui
+                    .add(egui::Button::new("Gridlines"))
+                    .on_hover_text("Toggle visible gridlines")
+                    .clicked()
+                {
                     self.map.lines = !self.map.lines;
                 }
             });

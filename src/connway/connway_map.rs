@@ -2,10 +2,7 @@
 // the drawing logic and isolate that in some other class in a more generalized manner, you would
 // keep the Map struct, but rename it to conway_map, and then for any other simulation you would
 // have it be (sim name)_Map struct or something. Then, you would use those structs to make the
-// draw calls you figured out/thought about in the main, kinda "super" Map class. this is where
-// being able to understand and use object oriented paradigms will come in handy. Maybe do it in a
-// vc over the weekend with byte. He seems excited about the project and would likely be willing
-// to help
+// draw calls you figured out/thought about in the main, kinda "super" Map struct.
 
 // TODO: Implement a "stamp" or blueprint feature in which the user can stamp their own pre-saved 
 // game of life patterns into the map? Provide some basic ones like gliders and such
@@ -121,7 +118,7 @@ impl Map {
                 }
             }
         }
-       self.cache_initial_state(); 
+       //self.cache_initial_state(); 
     }
     pub fn cache_initial_state(&mut self){
        self.initial_state = self.cells.clone(); 
@@ -149,9 +146,9 @@ impl Map {
         }
         let mut n_cells = HashSet::new();
         let mut checked = HashSet::new();
-        for el in &self.cells {
+        for cell in &self.cells {
             for step in NEIGHBORS {
-                let mut xy = Pos(el.0 + step.0, el.1 + step.1);
+                let mut xy = Pos(cell.0 + step.0, cell.1 + step.1);
 
                 xy.0 = self.apply_periodic_boundary(xy.0, self.map_size);
                 xy.1 = self.apply_periodic_boundary(xy.1, self.map_size);
