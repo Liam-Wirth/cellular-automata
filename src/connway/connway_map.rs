@@ -130,8 +130,8 @@ impl Map {
     pub fn fps_to_speed(fps: f32) -> u128 {
         Duration::new(0, (1000000000.0 / fps) as u32).as_millis()
     }
+    // NOTE: This could probably be useful for the refactor
     pub fn update(&mut self) {
-        //TODO: Figure out how this handles cell death?
         let duration_since_last_frame = Instant::now().duration_since(self.last_frame_time);
         //below line basically forces fps to work. like, it's saying "if last frame happened, but
         //is lower then our set speed, don't do SHIT!"
@@ -208,19 +208,17 @@ impl Map {
 
         self.cells = elems_c;
     }
-    pub fn draw_lines(&self, rect: Rect, shapes: &mut Vec<Shape>) {
+    pub fn draw_lines(&mut self, rect: Rect, shapes: &mut Vec<Shape>) {
+        let stroke_thickness = self.exponential_easing(0.1, 50.0, 0.0, 2.0);
         for i in 0..=self.map_size {
             let x = rect.min.x + self.cell_size as f32 * i as f32 - self.x_axis as f32;
             shapes.push(Shape::line_segment(
                 [
                     egui::Pos2::new(x, rect.min.y),
-                    egui::Pos2::new(
-                        x,
-                        rect.min.y + self.cell_size as f32 * self.map_size as f32,
-                    ),
+                    egui::Pos2::new(x, rect.min.y + self.cell_size as f32 * self.map_size as f32),
                 ],
                 egui::Stroke::new(
-                    1.0,
+                    stroke_thickness,
                     if i == self.map_size {
                         Color32::RED
                     } else {
@@ -236,13 +234,10 @@ impl Map {
             shapes.push(Shape::line_segment(
                 [
                     egui::Pos2::new(rect.min.x, y),
-                    egui::Pos2::new(
-                        rect.min.x + self.cell_size as f32 * self.map_size as f32,
-                        y,
-                    ),
+                    egui::Pos2::new(rect.min.x + self.cell_size as f32 * self.map_size as f32, y),
                 ],
                 egui::Stroke::new(
-                    1.0,
+                    stroke_thickness,
                     if i == self.map_size {
                         Color32::RED
                     } else {
@@ -251,7 +246,6 @@ impl Map {
                 ),
             ));
         }
-
     }
     pub fn generate_cells(&self, shapes: &mut Vec<Shape>, rect: Rect) {
         for c in &self.cells {
@@ -279,6 +273,33 @@ impl Map {
             ));
         }
     }
+    ///Function largely exists solely for the purpose of easing the thickness of the gridlines
+    ///based on the cell size
+    fn sigmoid_easing(&mut self, x_0: f32, k: f32) -> f32 {
+        let exponent = -k * (self.cell_size - x_0);
+        1.0 / (1.0 + exponent.exp())
+    }
+    fn exponential_easing(
+        &mut self,
+        min_cell_size: f32,
+        max_cell_size: f32,
+        min_thickness: f32,
+        max_thickness: f32,
+    ) -> f32 {
+        if self.cell_size <= min_cell_size {
+            return min_thickness; // Gridlines disappear when zoomed out completely
+        }
+        if self.cell_size > max_cell_size {
+            return max_thickness; // Gridlines are thickest when zoomed in completely
+        }
+
+        let t = (self.cell_size - min_cell_size) / (max_cell_size - min_cell_size); // Normalized value between 0 and 1
+
+        let thickness = min_thickness + t * (max_thickness - min_thickness);
+
+        thickness
+    }
+
     // TODO: Use this code, and a provided text box to allow users to make "blueprints"
     pub fn generate_from_file(&mut self, f: &str) {
         if fs::read_to_string(f).is_err() {
