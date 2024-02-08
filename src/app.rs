@@ -1,9 +1,10 @@
 use crate::connway;
+use crate::Pos;
 use connway::connway_map;
-use connway::connway_map::Map;
 use eframe::egui;
 use egui::Id;
 use egui::LayerId;
+use std::collections::HashSet;
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
@@ -11,6 +12,7 @@ pub struct App {
     map: connway::connway_map::Map,
     running: bool,
     filename: String,
+    reset: bool,
     rect: Option<egui::Rect>,
     // Example stuff:
     label: String,
@@ -37,6 +39,7 @@ impl Default for App {
             fps: 0.0,
             value: 2.7,
             view_stats: false,
+            reset: false,
         }
     }
 }
@@ -67,7 +70,7 @@ impl eframe::App for App {
         // Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
         // For inspiration and more examples, go to https://emilk.github.io/egui
 
-        self.map.light_mode = (ctx.style().visuals == egui::Visuals::light());
+        self.map.light_mode = ctx.style().visuals == egui::Visuals::light();
         ctx.request_repaint();
         egui::SidePanel::left("Menu").show(ctx, |ui| {
             ui.add(
@@ -117,17 +120,38 @@ impl eframe::App for App {
             //        });
 
             ui.horizontal(|ui| {
-                if ui.add(egui::Button::new("Toggle")).clicked() {
-                    self.running = !self.running;
+                let mut pause_play: &str = if self.running { "Pause" } else { "Play" };
+                ui.add_enabled_ui(self.running || !self.map.is_initial, |ui| {
+                    if ui.add(egui::Button::new(pause_play)).clicked() {
+                        self.running = !self.running;
+                    }
+                });
+                ui.add_enabled_ui(!self.running && self.map.is_initial, |ui| {
+                    if ui
+                        .add(egui::Button::new("Start"))
+                        .on_hover_text("Start or Pause the simulation")
+                        .clicked()
+                    {
+                        if !self.reset {
+                            self.map.cache_initial_state();
+                        }
+                        self.running = !self.running;
+                        self.reset = false;
+                    }
+                });
+                ui.add_enabled_ui(!self.running, |ui| {
+                    if ui.add(egui::Button::new("Random")).clicked() {
+                        self.map.gen_random();
+                        self.map.center_cells(self.rect.unwrap());
+                    }
+                });
+                if ui.add(egui::Button::new("Reset")).clicked() {
+                    self.map.clear();
+                    self.running = false;
                 }
-                if ui.add(egui::Button::new("Random")).clicked() {
-                    self.map.gen_random();
-                    self.map.center_cells(self.rect.unwrap());
-                }
-                if ui.add(egui::Button::new("Clean")).clicked() {
-                    self.map.clean();
-                }
-                if ui.add(egui::Button::new("Gridlines")).clicked() {
+            });
+            ui.horizontal(|ui| {
+                if ui.add(egui::Button::new("Gridlines")).on_hover_text("Toggle visible gridlines").clicked() {
                     self.map.lines = !self.map.lines;
                 }
             });
@@ -154,7 +178,7 @@ impl eframe::App for App {
         //NOTE: This is where central panel is drawn (the actual simulation)
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            let mut gridline_layer: egui::LayerId =
+            let gridline_layer: egui::LayerId =
                 LayerId::new(egui::Order::Foreground, Id::from("gridlines"));
             let painter = egui::Painter::new(
                 ui.ctx().clone(),

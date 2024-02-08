@@ -6,46 +6,21 @@
 // being able to understand and use object oriented paradigms will come in handy. Maybe do it in a
 // vc over the weekend with byte. He seems excited about the project and would likely be willing
 // to help
+
+// TODO: Implement a "stamp" or blueprint feature in which the user can stamp their own pre-saved 
+// game of life patterns into the map? Provide some basic ones like gliders and such
 use std::{collections::HashSet, fs};
 
 use egui::{vec2, Color32, Rect, Rounding, Shape};
 use instant::{Duration, Instant};
 use rand::{thread_rng, Rng};
+use crate::Pos;
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConnwayCell {
     Alive = 1,
     Dead = 0,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, serde::Deserialize, serde::Serialize)]
-#[serde(default)] // if we add new fields, give them default values when deserializing old state
-pub struct Pos(pub i32, pub i32);
-
-impl Default for Pos {
-    fn default() -> Self {
-        Pos(0, 0)
-    }
-}
-
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(default)] // if we add new fields, give them default values when deserializing old state
-pub struct Map {
-    pub x_axis: i32,
-    pub y_axis: i32,
-    pub cell_size: f32,
-    pub map_size: i32,
-    pub speed: u128,
-    pub fps: u32,
-    pub rand_scarcity: u32,
-    pub light_mode: bool,
-    pub lines: bool,
-
-    #[serde(skip)]
-    last_frame_time: Instant,
-    #[serde(skip)]
-    cells: HashSet<Pos>,
 }
 /// "Neighbor" cells around the current cell, coordinates are organized in standard x,y format
 /// ## Think of the layout like this:
@@ -62,6 +37,29 @@ const NEIGHBORS: [(i32, i32); 8] = [
     (0, -1),
     (1, -1),
 ];
+
+
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(default)] // if we add new fields, give them default values when deserializing old state
+pub struct Map {
+    pub x_axis: i32,
+    pub y_axis: i32,
+    pub cell_size: f32,
+    pub map_size: i32,
+    pub speed: u128,
+    pub fps: u32,
+    pub rand_scarcity: u32,
+    pub light_mode: bool,
+    pub lines: bool,
+    pub is_initial: bool,
+    
+    #[serde(skip)]
+    last_frame_time: Instant,
+    #[serde(skip)]
+    cells: HashSet<Pos>,
+    initial_state: HashSet<Pos>,
+}
+
 impl Default for Map {
     fn default() -> Self {
         Map::new()
@@ -74,6 +72,7 @@ impl Map {
             fps: 10,
             speed: Map::fps_to_speed(10.0),
             cells: HashSet::new(),
+            initial_state: HashSet::new(),
             last_frame_time: Instant::now(),
             map_size: 75,
             cell_size: 0.0,
@@ -82,6 +81,7 @@ impl Map {
             rand_scarcity: 3 as u32,
             light_mode: true,
             lines: false,
+            is_initial: true,
         }
     }
     pub fn update_speed(&mut self) {
@@ -96,9 +96,9 @@ impl Map {
     //     }
     //     neighbors
     // }
-    //TODO: Below, I have a new toroidal function for neighbor checking, and above, I have a more
-    //naive check, maybe later look into seeing if it is possible to toggle between say "hard"
-    //walls and toroidal walls that just tile
+    // NOTE: Below, I have a new toroidal function for neighbor checking, and above, I have a more
+    // naive check, maybe later look into seeing if it is possible to toggle between say "hard"
+    // walls and toroidal walls that just tile
     pub fn neighbors(&self, p: &Pos) -> usize {
         NEIGHBORS.iter().fold(0, |neighbors, &i| {
             let mut neighbor_pos = Pos(p.0 + i.0, p.1 + i.1);
@@ -110,10 +110,8 @@ impl Map {
         })
     }
 
-    // TODO: I read something somewhere about how I could make my own efficient random number
-    // generator, that could be fun, maybe I'll implement that here
     pub fn gen_random(&mut self) {
-        self.cells = HashSet::new();
+        self.clear();
         for y in 0..=self.map_size - 4 {
             for x in 0..=self.map_size - 4 {
                 let mut rng = thread_rng();
@@ -123,8 +121,19 @@ impl Map {
                 }
             }
         }
+       self.cache_initial_state(); 
     }
-    pub fn clean(&mut self) {
+    pub fn cache_initial_state(&mut self){
+       self.initial_state = self.cells.clone(); 
+       //basically anytime this has been called, AND update has not been called, we can garuntee we
+       //are in the "initial" state of the app
+       self.is_initial = true;
+    }
+    pub fn restore_initial_state(&mut self){
+        self.cells = self.initial_state.clone();
+        self.is_initial = true;
+    }
+    pub fn clear(&mut self) {
         self.cells = HashSet::new();
     }
     pub fn fps_to_speed(fps: f32) -> u128 {
@@ -158,6 +167,7 @@ impl Map {
         }
         self.last_frame_time = Instant::now();
         self.cells = n_cells;
+        self.is_initial = false;
     }
     // NOTE: If I end up generalizing/standardizing the way a map is implemented in some refactor
     // down the line, I should move alot of these functions to a parent mod.rs file. For now I
@@ -199,10 +209,10 @@ impl Map {
         } else {
             self.cell_size = ((rect.max.y - rect.min.y) as i32 / self.map_size) as f32;
         }
-        for el in &self.cells {
+        for cell in &self.cells {
             elems_c.insert(Pos(
-                self.map_size / 2 - (max_x - min_x) / 2 + el.0,
-                self.map_size / 2 - (max_y - min_y) / 2 + el.1,
+                self.map_size / 2 - (max_x - min_x) / 2 + cell.0,
+                self.map_size / 2 - (max_y - min_y) / 2 + cell.1,
             ));
         }
 

@@ -20,3 +20,13 @@ impl RunStatistics {
         }
     }
 }
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, serde::Deserialize, serde::Serialize)]
+
+#[serde(default)] // if we add new fields, give them default values when deserializing old state
+pub struct Pos(pub i32, pub i32);
+
+impl Default for Pos {
+    fn default() -> Self {
+        Pos(0, 0)
+    }
+}

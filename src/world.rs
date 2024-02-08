@@ -1,4 +1,4 @@
-use std::{collections::hashset, fs};
+use std::{collections::HashSet, fs};
 
 use egui::{vec2, color32, rect, rounding, shape};
 use instant::{duration, instant};
