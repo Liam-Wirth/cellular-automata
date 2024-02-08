@@ -208,51 +208,52 @@ impl Map {
 
         self.cells = elems_c;
     }
-    pub fn generate_cells(&self, shapes: &mut Vec<Shape>, rect: Rect) {
-        if self.lines {
-            for i in 0..=self.map_size {
-                let x = rect.min.x + self.cell_size as f32 * i as f32 - self.x_axis as f32;
-                shapes.push(Shape::line_segment(
-                    [
-                        egui::Pos2::new(x, rect.min.y),
-                        egui::Pos2::new(
-                            x,
-                            rect.min.y + self.cell_size as f32 * self.map_size as f32,
-                        ),
-                    ],
-                    egui::Stroke::new(
-                        1.0,
-                        if i == self.map_size {
-                            Color32::RED
-                        } else {
-                            Color32::GRAY
-                        },
+    pub fn draw_lines(&self, rect: Rect, shapes: &mut Vec<Shape>) {
+        for i in 0..=self.map_size {
+            let x = rect.min.x + self.cell_size as f32 * i as f32 - self.x_axis as f32;
+            shapes.push(Shape::line_segment(
+                [
+                    egui::Pos2::new(x, rect.min.y),
+                    egui::Pos2::new(
+                        x,
+                        rect.min.y + self.cell_size as f32 * self.map_size as f32,
                     ),
-                ));
-            }
-
-            // Draw horizontal grid lines
-            for i in 0..=self.map_size {
-                let y = rect.min.y + self.cell_size as f32 * i as f32 - self.y_axis as f32;
-                shapes.push(Shape::line_segment(
-                    [
-                        egui::Pos2::new(rect.min.x, y),
-                        egui::Pos2::new(
-                            rect.min.x + self.cell_size as f32 * self.map_size as f32,
-                            y,
-                        ),
-                    ],
-                    egui::Stroke::new(
-                        1.0,
-                        if i == self.map_size {
-                            Color32::RED
-                        } else {
-                            Color32::GRAY
-                        },
-                    ),
-                ));
-            }
+                ],
+                egui::Stroke::new(
+                    1.0,
+                    if i == self.map_size {
+                        Color32::RED
+                    } else {
+                        Color32::GRAY
+                    },
+                ),
+            ));
         }
+
+        // Draw horizontal grid lines
+        for i in 0..=self.map_size {
+            let y = rect.min.y + self.cell_size as f32 * i as f32 - self.y_axis as f32;
+            shapes.push(Shape::line_segment(
+                [
+                    egui::Pos2::new(rect.min.x, y),
+                    egui::Pos2::new(
+                        rect.min.x + self.cell_size as f32 * self.map_size as f32,
+                        y,
+                    ),
+                ],
+                egui::Stroke::new(
+                    1.0,
+                    if i == self.map_size {
+                        Color32::RED
+                    } else {
+                        Color32::GRAY
+                    },
+                ),
+            ));
+        }
+
+    }
+    pub fn generate_cells(&self, shapes: &mut Vec<Shape>, rect: Rect) {
         for c in &self.cells {
             shapes.push(Shape::rect_filled(
                 Rect {

@@ -18,6 +18,8 @@ pub struct App {
 }
 // TODO: implement feature so that the user can click and drag on the main view window to move
 // their view around instead of using sliders, cause sliders are janky as fuck
+
+//const GRIDLINE_LAYER: egui::LayerId = egui::LayerId::new(egui::Order::Foreground, "gridlines");
 impl Default for App {
     fn default() -> Self {
         let mut map = connway_map::Map::new();
@@ -144,6 +146,10 @@ impl eframe::App for App {
                 egui::widgets::global_dark_light_mode_buttons(ui);
             });
         });
+
+        //NOTE: This is where central panel is drawn (the actual simulation)
+
+
             egui::CentralPanel::default().show(ctx, |ui| {
                 let painter = egui::Painter::new(
                     ui.ctx().clone(),
