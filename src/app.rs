@@ -151,7 +151,6 @@ impl eframe::App for App {
                             // effect on a blueprint made in a smaller board size
                             self.map.cache_initial_state();
                         }
-                        self.map.center_cells(self.rect.unwrap());
                     }
                 });
                 if ui.add(egui::Button::new("Clear")).clicked() {
@@ -170,6 +169,10 @@ impl eframe::App for App {
                     .clicked()
                 {
                     self.map.lines = !self.map.lines;
+                }
+                if ui.add(egui::Button::new("ReCenter")).on_hover_text("Recenter the Grid").clicked() {
+                    self.map.center_cells(self.rect.unwrap());
+
                 }
             });
         });
