@@ -72,7 +72,7 @@ impl Map {
             initial_state: HashSet::new(),
             last_frame_time: Instant::now(),
             map_size: 75,
-            cell_size: 0.0,
+            cell_size: 10.0,
             x_axis: 0,
             y_axis: 0,
             rand_scarcity: 3 as u32,
