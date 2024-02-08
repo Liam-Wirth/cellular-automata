@@ -95,19 +95,21 @@ impl eframe::App for App {
                     .text("FPS"),
             );
             self.map.update_speed();
-
-            ui.add(
-                egui::Slider::new(&mut self.map.x_axis, -1000..=1000)
-                    .step_by(1.0)
-                    .orientation(egui::SliderOrientation::Horizontal)
-                    .text("X Axis"),
-            );
-            ui.add(
-                egui::Slider::new(&mut self.map.y_axis, -1000..=1000)
-                    .step_by(1.0)
-                    .orientation(egui::SliderOrientation::Horizontal)
-                    .text("Y Axis"),
-            );
+// BUG: below sliders are bugged, if one of the viewports is updated, say, the x axis, the vertical
+// lines will not move along with the horizontal ones, leading to a realy weird effect, and vice
+// versa for the y axis, with the other lines not moving, while the vertical ones will move
+           // ui.add(
+           //     egui::Slider::new(&mut self.map.x_axis, -1000..=1000)
+           //         .step_by(1.0)
+           //         .orientation(egui::SliderOrientation::Horizontal)
+           //         .text("X Axis"),
+           // );
+           // ui.add(
+           //     egui::Slider::new(&mut self.map.y_axis, -1000..=1000)
+           //         .step_by(1.0)
+           //         .orientation(egui::SliderOrientation::Horizontal)
+           //         .text("Y Axis"),
+           // );
             ui.add(
                 egui::Slider::new(&mut self.map.map_size, 10..=500)
                     .step_by(1.0)
