@@ -1,15 +1,13 @@
-use crate::connway;
-use crate::Pos;
-use connway::connway_map;
+use crate::conway;
+use conway::conway_map;
 use eframe::egui;
 use egui::Id;
 use egui::LayerId;
-use std::collections::HashSet;
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct App {
-    map: connway::connway_map::Map,
+    map: conway::conway_map::Map,
     running: bool,
     filename: String,
     reset: bool,
@@ -28,7 +26,7 @@ pub struct App {
 
 impl Default for App {
     fn default() -> Self {
-        let mut map = connway_map::Map::new();
+        let mut map = conway_map::Map::new();
         map.gen_random();
         Self {
             // Example stuff:
@@ -59,21 +57,9 @@ impl App {
 
         Default::default()
     }
-}
 
-impl eframe::App for App {
-    /// Called by the frame work to save state before shutdown.
-    fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, eframe::APP_KEY, self);
-    }
-
-    /// Called each time the UI needs repainting, which may be many times per second.
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
-        // For inspiration and more examples, go to https://emilk.github.io/egui
-
-        self.map.light_mode = ctx.style().visuals == egui::Visuals::light();
-        ctx.request_repaint();
+	#[inline]
+    fn update_side_panel(&mut self, ctx: &egui::Context) {
         egui::SidePanel::left("Menu").show(ctx, |ui| {
             ui.add(
                 egui::Slider::new(&mut self.map.cell_size, 0.1..=50.0)
@@ -95,9 +81,9 @@ impl eframe::App for App {
                     .text("FPS"),
             );
             self.map.update_speed();
-// BUG: below sliders are bugged, if one of the viewports is updated, say, the x axis, the vertical
-// lines will not move along with the horizontal ones, leading to a realy weird effect, and vice
-// versa for the y axis, with the other lines not moving, while the vertical ones will move
+        // BUG: below sliders are bugged, if one of the viewports is updated, say, the x axis, the vertical
+        // lines will not move along with the horizontal ones, leading to a realy weird effect, and vice
+        // versa for the y axis, with the other lines not moving, while the vertical ones will move
            // ui.add(
            //     egui::Slider::new(&mut self.map.x_axis, -1000..=1000)
            //         .step_by(1.0)
@@ -116,15 +102,15 @@ impl eframe::App for App {
                     .orientation(egui::SliderOrientation::Horizontal)
                     .text("Board Size"),
             );
-            //        ui.collapsing("Statistics", |ui| {
-            //            ui.label(format!("Generations: {}", self.map.stats.generations));
-            //            ui.label(format!("Births: {}", self.map.stats.births));
-            //            ui.label(format!("Deaths: {}", self.map.stats.deaths));
-            //            ui.label(format!("Current Population: {}", self.map.stats.population));
-            //        });
+            //        ui.collapsing("Statistics", |ui| \{
+            //            ui.label(format!("Generations: \{\}", self.map.stats.generations));
+            //            ui.label(format!("Births: \{\}", self.map.stats.births));
+            //            ui.label(format!("Deaths: \{\}", self.map.stats.deaths));
+            //            ui.label(format!("Current Population: \{\}", self.map.stats.population));
+            //        \});
 
             ui.horizontal(|ui| {
-                let mut pause_play: &str = if self.running { "Pause" } else { "Play" };
+                let pause_play: &str = if self.running { "Pause" } else { "Play" };
                 if ui.add(egui::Button::new(pause_play)).clicked() {
                     self.running = !self.running;
                 }
@@ -176,91 +162,96 @@ impl eframe::App for App {
                 }
             });
         });
-
-        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            // The top panel is often a good place for a menu bar:
-
-            egui::menu::bar(ui, |ui| {
-                // NOTE: no File->Quit on web pages!
-                let is_web = cfg!(target_arch = "wasm32");
-                if !is_web {
-                    ui.menu_button("File", |ui| {
-                        if ui.button("Quit").clicked() {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                        }
-                    });
-                    ui.add_space(16.0);
-                }
-                egui::widgets::global_dark_light_mode_buttons(ui);
-            });
-        });
-
-        //NOTE: This is where central panel is drawn (the actual simulation)
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let gridline_layer: egui::LayerId =
-                LayerId::new(egui::Order::Foreground, Id::from("gridlines"));
-            let painter = egui::Painter::new(
-                ui.ctx().clone(),
-                ui.layer_id(),
-                ui.available_rect_before_wrap(),
-            );
-            let line_painter = egui::Painter::new(
-                ui.ctx().clone(),
-                gridline_layer,
-                ui.available_rect_before_wrap(),
-            );
-            ui.expand_to_include_rect(painter.clip_rect());
-            ui.expand_to_include_rect(line_painter.clip_rect());
-            self.rect = Some(painter.clip_rect());
-            let mut shapes = vec![egui::Shape::rect_filled(
-                self.rect.unwrap(),
-                egui::Rounding::ZERO,
-                egui::Color32::WHITE,
-            )];
-            if self.map.light_mode {
-                shapes = vec![egui::Shape::rect_filled(
-                    self.rect.unwrap(),
-                    egui::Rounding::ZERO,
-                    egui::Color32::WHITE,
-                )];
-            } else {
-                shapes = vec![egui::Shape::rect_filled(
-                    self.rect.unwrap(),
-                    egui::Rounding::ZERO,
-                    egui::Color32::BLACK,
-                )];
-            }
-            self.map.generate_cells(&mut shapes, self.rect.unwrap());
-            painter.extend(shapes);
-            if self.running {
-                self.map.update();
-            }
-            if self.map.lines {
-                let mut lines = vec![egui::Shape::Noop];
-                self.map.draw_lines(self.rect.unwrap(), &mut lines);
-                line_painter.extend(lines);
-            }
-        });
-
-        if self.view_stats {
-            egui::Window::new("Stats").show(ctx, |ui| {
-                ui.label("TODO :(");
-            });
-        }
     }
+
+	#[inline]
+	fn update_menu_bar(&self, ctx: &egui::Context) {
+		egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+			// The top panel is often a good place for a menu bar:
+
+			egui::menu::bar(ui, |ui| {
+				// NOTE: no File->Quit on web pages!
+				let is_web = cfg!(target_arch = "wasm32");
+				if !is_web {
+					ui.menu_button("File", |ui| {
+						if ui.button("Quit").clicked() {
+							ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+						}
+					});
+					ui.add_space(16.0);
+				}
+				egui::widgets::global_dark_light_mode_buttons(ui);
+			});
+		});
+	}
+
+	#[inline]
+	fn update_simulation(&mut self, ctx: &egui::Context) {
+		egui::CentralPanel::default().show(ctx, |ui| {
+			let gridline_layer: egui::LayerId =
+				LayerId::new(egui::Order::Foreground, Id::from("gridlines"));
+			let painter = egui::Painter::new(
+				ui.ctx().clone(),
+				ui.layer_id(),
+				ui.available_rect_before_wrap(),
+			);
+			let line_painter = egui::Painter::new(
+				ui.ctx().clone(),
+				gridline_layer,
+				ui.available_rect_before_wrap(),
+			);
+			ui.expand_to_include_rect(painter.clip_rect());
+			ui.expand_to_include_rect(line_painter.clip_rect());
+			self.rect = Some(painter.clip_rect());
+			let mut shapes: Vec<egui::Shape> =
+				if self.map.light_mode {
+					vec![egui::Shape::rect_filled(
+						self.rect.unwrap(),
+						egui::Rounding::ZERO,
+						egui::Color32::WHITE,
+					)]
+				} else {
+					vec![egui::Shape::rect_filled(
+						self.rect.unwrap(),
+						egui::Rounding::ZERO,
+						egui::Color32::BLACK,
+					)]
+				};
+			self.map.generate_cells(&mut shapes, self.rect.unwrap());
+			painter.extend(shapes);
+			if self.running {
+				self.map.update();
+			}
+			if self.map.lines {
+				let mut lines = vec![egui::Shape::Noop];
+				self.map.draw_lines(self.rect.unwrap(), &mut lines);
+				line_painter.extend(lines);
+			}
+		});
+
+		if self.view_stats {
+			egui::Window::new("Stats").show(ctx, |ui| {
+				ui.label("TODO :(");
+			});
+		}
+	}
 }
 
-fn powered_by_egui_and_eframe(ui: &mut egui::Ui) {
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 0.0;
-        ui.label("Powered by ");
-        ui.hyperlink_to("egui", "https://github.com/emilk/egui");
-        ui.label(" and ");
-        ui.hyperlink_to(
-            "eframe",
-            "https://github.com/emilk/egui/tree/master/crates/eframe",
-        );
-        ui.label(".");
-    });
+impl eframe::App for App {
+    /// Called by the frame work to save state before shutdown.
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, eframe::APP_KEY, self);
+    }
+
+    /// Called each time the UI needs repainting, which may be many times per second.
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
+        // For inspiration and more examples, go to https://emilk.github.io/egui
+
+        self.map.light_mode = ctx.style().visuals == egui::Visuals::light();
+        ctx.request_repaint();
+        self.update_side_panel(ctx);
+        self.update_menu_bar(ctx);
+        self.update_simulation(ctx);
+    }
 }

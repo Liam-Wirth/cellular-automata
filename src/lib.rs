@@ -1,8 +1,8 @@
 #![warn(clippy::all, rust_2018_idioms)]
 pub mod app;
-pub mod connway;
+pub mod conway;
 pub use app::App;
-pub use connway::connway_map::Map;
+pub use conway::conway_map::Map;
 
 pub struct RunStatistics {
     pub births: u32,
