@@ -4,7 +4,7 @@
 // have it be (sim name)_Map struct or something. Then, you would use those structs to make the
 // draw calls you figured out/thought about in the main, kinda "super" Map struct.
 
-// TODO: Implement a "stamp" or blueprint feature in which the user can stamp their own pre-saved 
+// TODO: Implement a "stamp" or blueprint feature in which the user can stamp their own pre-saved
 // game of life patterns into the map? Provide some basic ones like gliders and such
 use std::{collections::HashSet, fs};
 
@@ -15,7 +15,7 @@ use crate::Pos;
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ConnwayCell {
+pub enum ConwayCell {
     Alive = 1,
     Dead = 0,
 }
@@ -49,7 +49,7 @@ pub struct Map {
     pub light_mode: bool,
     pub lines: bool,
     pub is_initial: bool,
-    
+
     #[serde(skip)]
     last_frame_time: Instant,
     #[serde(skip)]
@@ -118,10 +118,10 @@ impl Map {
                 }
             }
         }
-       //self.cache_initial_state(); 
+       //self.cache_initial_state();
     }
     pub fn cache_initial_state(&mut self){
-       self.initial_state = self.cells.clone(); 
+       self.initial_state = self.cells.clone();
        //basically anytime this has been called, AND update has not been called, we can garuntee we
        //are in the "initial" state of the app
        self.is_initial = true;
