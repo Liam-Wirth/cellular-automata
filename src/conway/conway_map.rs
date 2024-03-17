@@ -8,10 +8,10 @@
 // game of life patterns into the map? Provide some basic ones like gliders and such
 use std::{collections::HashSet, fs};
 
+use crate::Pos;
 use egui::{vec2, Color32, Rect, Rounding, Shape};
 use instant::{Duration, Instant};
 use rand::{thread_rng, Rng};
-use crate::Pos;
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -34,7 +34,6 @@ const NEIGHBORS: [(i32, i32); 8] = [
     (0, -1),
     (1, -1),
 ];
-
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
@@ -75,7 +74,7 @@ impl Map {
             cell_size: 10.0,
             x_axis: 0,
             y_axis: 0,
-            rand_scarcity: 3 as u32,
+            rand_scarcity: 3 ,
             light_mode: true,
             lines: false,
             is_initial: true,
@@ -118,15 +117,15 @@ impl Map {
                 }
             }
         }
-       //self.cache_initial_state();
+        //self.cache_initial_state();
     }
-    pub fn cache_initial_state(&mut self){
-       self.initial_state = self.cells.clone();
-       //basically anytime this has been called, AND update has not been called, we can garuntee we
-       //are in the "initial" state of the app
-       self.is_initial = true;
+    pub fn cache_initial_state(&mut self) {
+        self.initial_state = self.cells.clone();
+        //basically anytime this has been called, AND update has not been called, we can garuntee we
+        //are in the "initial" state of the app
+        self.is_initial = true;
     }
-    pub fn restore_initial_state(&mut self){
+    pub fn restore_initial_state(&mut self) {
         self.cells = self.initial_state.clone();
         self.is_initial = true;
     }
@@ -215,48 +214,48 @@ impl Map {
 
         self.cells = elems_c;
     }
-pub fn draw_lines(&mut self, rect: Rect, shapes: &mut Vec<Shape>) {
-    // Calculate stroke thickness based on cell size
-    let stroke_thickness = self.exponential_easing(0.1, 50.0, 0.0, 2.0);
+    pub fn draw_lines(&mut self, rect: Rect, shapes: &mut Vec<Shape>) {
+        // Calculate stroke thickness based on cell size
+        let stroke_thickness = self.exponential_easing(0.1, 50.0, 0.0, 2.0);
 
-    // Draw vertical grid lines
-    for i in 0..=self.map_size {
-        let x = rect.min.x + self.cell_size as f32 * i as f32 - self.x_axis as f32;
-        shapes.push(Shape::line_segment(
-            [
-                egui::Pos2::new(x, rect.min.y),
-                egui::Pos2::new(x, rect.min.y + self.cell_size as f32 * self.map_size as f32),
-            ],
-            egui::Stroke::new(
-                stroke_thickness,
-                if i == self.map_size {
-                    Color32::RED
-                } else {
-                    Color32::GRAY
-                },
-            ),
-        ));
-    }
+        // Draw vertical grid lines
+        for i in 0..=self.map_size {
+            let x = rect.min.x + self.cell_size as f32 * i as f32 - self.x_axis as f32;
+            shapes.push(Shape::line_segment(
+                [
+                    egui::Pos2::new(x, rect.min.y),
+                    egui::Pos2::new(x, rect.min.y + self.cell_size as f32 * self.map_size as f32),
+                ],
+                egui::Stroke::new(
+                    stroke_thickness,
+                    if i == self.map_size {
+                        Color32::RED
+                    } else {
+                        Color32::GRAY
+                    },
+                ),
+            ));
+        }
 
-    // Draw horizontal grid lines
-    for i in 0..=self.map_size {
-        let y = rect.min.y + self.cell_size as f32 * i as f32 - self.y_axis as f32;
-        shapes.push(Shape::line_segment(
-            [
-                egui::Pos2::new(rect.min.x, y),
-                egui::Pos2::new(rect.min.x + self.cell_size as f32 * self.map_size as f32, y),
-            ],
-            egui::Stroke::new(
-                stroke_thickness,
-                if i == self.map_size {
-                    Color32::RED
-                } else {
-                    Color32::GRAY
-                },
-            ),
-        ));
+        // Draw horizontal grid lines
+        for i in 0..=self.map_size {
+            let y = rect.min.y + self.cell_size as f32 * i as f32 - self.y_axis as f32;
+            shapes.push(Shape::line_segment(
+                [
+                    egui::Pos2::new(rect.min.x, y),
+                    egui::Pos2::new(rect.min.x + self.cell_size as f32 * self.map_size as f32, y),
+                ],
+                egui::Stroke::new(
+                    stroke_thickness,
+                    if i == self.map_size {
+                        Color32::RED
+                    } else {
+                        Color32::GRAY
+                    },
+                ),
+            ));
+        }
     }
-}
     pub fn generate_cells(&self, shapes: &mut Vec<Shape>, rect: Rect) {
         for c in &self.cells {
             shapes.push(Shape::rect_filled(

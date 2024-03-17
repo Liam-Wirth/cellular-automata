@@ -1,4 +1,8 @@
+use std::default;
+
 use crate::conway;
+use crate::RunModes;
+use crate::UserInterface;
 use conway::conway_map;
 use eframe::egui;
 use egui::Id;
@@ -6,7 +10,8 @@ use egui::LayerId;
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
-pub struct App {
+pub struct ConwaySim {
+    // TODO: Move conway_map::Map to its own file, keeping the original implementation of map underneath conway_map, but also create an interface for more generalized behavior
     map: conway::conway_map::Map,
     running: bool,
     filename: String,
@@ -20,11 +25,13 @@ pub struct App {
     value: f32,
     view_stats: bool,
     first_run: bool,
+    mode: RunModes,
 }
 // TODO: implement feature so that the user can click and drag on the main view window to move
 // their view around instead of using sliders, cause sliders are janky as fuck
 
-impl Default for App {
+//generate documentation
+impl Default for ConwaySim {
     fn default() -> Self {
         let mut map = conway_map::Map::new();
         map.gen_random();
@@ -32,7 +39,7 @@ impl Default for App {
             // Example stuff:
             map,
             running: false,
-            label: "Hello World!".to_owned(),
+            label: "Cellular Automata".to_owned(),
             filename: "".to_owned(),
             rect: None,
             fps: 0.0,
@@ -40,11 +47,12 @@ impl Default for App {
             view_stats: false,
             reset: false,
             first_run: true,
+            mode: RunModes::default(),
         }
     }
 }
 
-impl App {
+impl ConwaySim {
     /// Called once before the first frame.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customize the look and feel of egui using
@@ -58,7 +66,56 @@ impl App {
         Default::default()
     }
 
-	#[inline]
+    fn update_simulation(&mut self, ctx: &egui::Context) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let gridline_layer: egui::LayerId =
+                LayerId::new(egui::Order::Foreground, Id::from("gridlines"));
+            let painter = egui::Painter::new(
+                ui.ctx().clone(),
+                ui.layer_id(),
+                ui.available_rect_before_wrap(),
+            );
+            let line_painter = egui::Painter::new(
+                ui.ctx().clone(),
+                gridline_layer,
+                ui.available_rect_before_wrap(),
+            );
+            ui.expand_to_include_rect(painter.clip_rect());
+            ui.expand_to_include_rect(line_painter.clip_rect());
+            self.rect = Some(painter.clip_rect());
+            let mut shapes: Vec<egui::Shape> = if self.map.light_mode {
+                vec![egui::Shape::rect_filled(
+                    self.rect.unwrap(),
+                    egui::Rounding::ZERO,
+                    egui::Color32::WHITE,
+                )]
+            } else {
+                vec![egui::Shape::rect_filled(
+                    self.rect.unwrap(),
+                    egui::Rounding::ZERO,
+                    egui::Color32::BLACK,
+                )]
+            };
+            self.map.generate_cells(&mut shapes, self.rect.unwrap());
+            painter.extend(shapes);
+            if self.running {
+                self.map.update();
+            }
+            if self.map.lines {
+                let mut lines = vec![egui::Shape::Noop];
+                self.map.draw_lines(self.rect.unwrap(), &mut lines);
+                line_painter.extend(lines);
+            }
+        });
+
+        if self.view_stats {
+            egui::Window::new("Stats").show(ctx, |ui| {
+                ui.label("TODO :(");
+            });
+        }
+    }
+}
+impl UserInterface for ConwaySim {
     fn update_side_panel(&mut self, ctx: &egui::Context) {
         egui::SidePanel::left("Menu").show(ctx, |ui| {
             ui.add(
@@ -81,21 +138,21 @@ impl App {
                     .text("FPS"),
             );
             self.map.update_speed();
-        // BUG: below sliders are bugged, if one of the viewports is updated, say, the x axis, the vertical
-        // lines will not move along with the horizontal ones, leading to a realy weird effect, and vice
-        // versa for the y axis, with the other lines not moving, while the vertical ones will move
-           // ui.add(
-           //     egui::Slider::new(&mut self.map.x_axis, -1000..=1000)
-           //         .step_by(1.0)
-           //         .orientation(egui::SliderOrientation::Horizontal)
-           //         .text("X Axis"),
-           // );
-           // ui.add(
-           //     egui::Slider::new(&mut self.map.y_axis, -1000..=1000)
-           //         .step_by(1.0)
-           //         .orientation(egui::SliderOrientation::Horizontal)
-           //         .text("Y Axis"),
-           // );
+            // BUG: below sliders are bugged, if one of the viewports is updated, say, the x axis, the vertical
+            // lines will not move along with the horizontal ones, leading to a realy weird effect, and vice
+            // versa for the y axis, with the other lines not moving, while the vertical ones will move
+            // ui.add(
+            //     egui::Slider::new(&mut self.map.x_axis, -1000..=1000)
+            //         .step_by(1.0)
+            //         .orientation(egui::SliderOrientation::Horizontal)
+            //         .text("X Axis"),
+            // );
+            // ui.add(
+            //     egui::Slider::new(&mut self.map.y_axis, -1000..=1000)
+            //         .step_by(1.0)
+            //         .orientation(egui::SliderOrientation::Horizontal)
+            //         .text("Y Axis"),
+            // );
             ui.add(
                 egui::Slider::new(&mut self.map.map_size, 10..=500)
                     .step_by(1.0)
@@ -143,7 +200,11 @@ impl App {
                     self.map.clear();
                     self.running = false;
                 }
-                if ui.add(egui::Button::new("Revert")).on_hover_text("Revert to the saved state").clicked() {
+                if ui
+                    .add(egui::Button::new("Revert"))
+                    .on_hover_text("Revert to the saved state")
+                    .clicked()
+                {
                     self.map.restore_initial_state();
                     self.running = false;
                 }
@@ -156,88 +217,39 @@ impl App {
                 {
                     self.map.lines = !self.map.lines;
                 }
-                if ui.add(egui::Button::new("ReCenter")).on_hover_text("Recenter the Grid").clicked() {
+                if ui
+                    .add(egui::Button::new("ReCenter"))
+                    .on_hover_text("Recenter the Grid")
+                    .clicked()
+                {
                     self.map.center_cells(self.rect.unwrap());
-
                 }
             });
         });
     }
 
-	#[inline]
-	fn update_menu_bar(&self, ctx: &egui::Context) {
-		egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-			// The top panel is often a good place for a menu bar:
+    fn update_menu_bar(&self, ctx: &egui::Context) {
+        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+            // The top panel is often a good place for a menu bar:
 
-			egui::menu::bar(ui, |ui| {
-				// NOTE: no File->Quit on web pages!
-				let is_web = cfg!(target_arch = "wasm32");
-				if !is_web {
-					ui.menu_button("File", |ui| {
-						if ui.button("Quit").clicked() {
-							ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-						}
-					});
-					ui.add_space(16.0);
-				}
-				egui::widgets::global_dark_light_mode_buttons(ui);
-			});
-		});
-	}
-
-	#[inline]
-	fn update_simulation(&mut self, ctx: &egui::Context) {
-		egui::CentralPanel::default().show(ctx, |ui| {
-			let gridline_layer: egui::LayerId =
-				LayerId::new(egui::Order::Foreground, Id::from("gridlines"));
-			let painter = egui::Painter::new(
-				ui.ctx().clone(),
-				ui.layer_id(),
-				ui.available_rect_before_wrap(),
-			);
-			let line_painter = egui::Painter::new(
-				ui.ctx().clone(),
-				gridline_layer,
-				ui.available_rect_before_wrap(),
-			);
-			ui.expand_to_include_rect(painter.clip_rect());
-			ui.expand_to_include_rect(line_painter.clip_rect());
-			self.rect = Some(painter.clip_rect());
-			let mut shapes: Vec<egui::Shape> =
-				if self.map.light_mode {
-					vec![egui::Shape::rect_filled(
-						self.rect.unwrap(),
-						egui::Rounding::ZERO,
-						egui::Color32::WHITE,
-					)]
-				} else {
-					vec![egui::Shape::rect_filled(
-						self.rect.unwrap(),
-						egui::Rounding::ZERO,
-						egui::Color32::BLACK,
-					)]
-				};
-			self.map.generate_cells(&mut shapes, self.rect.unwrap());
-			painter.extend(shapes);
-			if self.running {
-				self.map.update();
-			}
-			if self.map.lines {
-				let mut lines = vec![egui::Shape::Noop];
-				self.map.draw_lines(self.rect.unwrap(), &mut lines);
-				line_painter.extend(lines);
-			}
-		});
-
-		if self.view_stats {
-			egui::Window::new("Stats").show(ctx, |ui| {
-				ui.label("TODO :(");
-			});
-		}
-	}
+            egui::menu::bar(ui, |ui| {
+                // NOTE: no File->Quit on web pages!
+                let is_web = cfg!(target_arch = "wasm32");
+                if !is_web {
+                    ui.menu_button("File", |ui| {
+                        if ui.button("Quit").clicked() {
+                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                        }
+                    });
+                    ui.add_space(16.0);
+                }
+                egui::widgets::global_dark_light_mode_buttons(ui);
+            });
+        });
+    }
 }
 
-impl eframe::App for App {
+impl eframe::App for ConwaySim {
     /// Called by the frame work to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
