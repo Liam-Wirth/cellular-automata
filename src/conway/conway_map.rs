@@ -220,11 +220,11 @@ impl Map {
 
         // Draw vertical grid lines
         for i in 0..=self.map_size {
-            let x = rect.min.x + self.cell_size as f32 * i as f32 - self.x_axis as f32;
+            let x = rect.min.x + self.cell_size * i as f32 - self.x_axis as f32;
             shapes.push(Shape::line_segment(
                 [
                     egui::Pos2::new(x, rect.min.y),
-                    egui::Pos2::new(x, rect.min.y + self.cell_size as f32 * self.map_size as f32),
+                    egui::Pos2::new(x, rect.min.y + self.cell_size * self.map_size as f32),
                 ],
                 egui::Stroke::new(
                     stroke_thickness,
@@ -239,11 +239,11 @@ impl Map {
 
         // Draw horizontal grid lines
         for i in 0..=self.map_size {
-            let y = rect.min.y + self.cell_size as f32 * i as f32 - self.y_axis as f32;
+            let y = rect.min.y + self.cell_size * i as f32 - self.y_axis as f32;
             shapes.push(Shape::line_segment(
                 [
                     egui::Pos2::new(rect.min.x, y),
-                    egui::Pos2::new(rect.min.x + self.cell_size as f32 * self.map_size as f32, y),
+                    egui::Pos2::new(rect.min.x + self.cell_size * self.map_size as f32, y),
                 ],
                 egui::Stroke::new(
                     stroke_thickness,
@@ -262,13 +262,13 @@ impl Map {
                 Rect {
                     min: rect.min
                         + vec2(
-                            self.cell_size as f32 * c.0 as f32 - self.x_axis as f32,
-                            self.cell_size as f32 * c.1 as f32 - self.y_axis as f32,
+                            self.cell_size * c.0 as f32 - self.x_axis as f32,
+                            self.cell_size * c.1 as f32 - self.y_axis as f32,
                         ),
                     max: rect.min
                         + vec2(
-                            self.cell_size as f32 * (c.0 + 1) as f32 - self.x_axis as f32,
-                            self.cell_size as f32 * (c.1 + 1) as f32 - self.y_axis as f32,
+                            self.cell_size * (c.0 + 1) as f32 - self.x_axis as f32,
+                            self.cell_size * (c.1 + 1) as f32 - self.y_axis as f32,
                         ),
                 },
                 Rounding::ZERO,
@@ -304,9 +304,9 @@ impl Map {
 
         let t = (self.cell_size - min_cell_size) / (max_cell_size - min_cell_size); // Normalized value between 0 and 1
 
-        let thickness = min_thickness + t * (max_thickness - min_thickness);
+        
 
-        thickness
+        min_thickness + t * (max_thickness - min_thickness)
     }
 
     // TODO: Use this code, and a provided text box to allow users to make "blueprints"
