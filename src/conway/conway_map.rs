@@ -74,7 +74,7 @@ impl Map {
             cell_size: 10.0,
             x_axis: 0,
             y_axis: 0,
-            rand_scarcity: 3 ,
+            rand_scarcity: 3,
             light_mode: true,
             lines: false,
             is_initial: true,
