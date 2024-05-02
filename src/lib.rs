@@ -4,6 +4,7 @@ pub mod conway;
 pub use app::ConwaySim;
 pub use conway::conway_map::Map;
 
+#[derive(Default)]
 pub struct RunStatistics {
     pub births: u32,
     pub deaths: u32,

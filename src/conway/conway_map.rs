@@ -284,6 +284,7 @@ impl Map {
     }
     ///Function largely exists solely for the purpose of easing the thickness of the gridlines
     ///based on the cell size
+    #[allow(dead_code)]
     fn sigmoid_easing(&mut self, x_0: f32, k: f32) -> f32 {
         let exponent = -k * (self.cell_size - x_0);
         1.0 / (1.0 + exponent.exp())
