@@ -1,5 +1,3 @@
-
-
 use crate::conway;
 use crate::RunModes;
 use crate::UserInterface;

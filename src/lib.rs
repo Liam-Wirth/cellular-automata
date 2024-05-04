@@ -26,17 +26,15 @@ impl RunStatistics {
 #[derive(Default)]
 pub struct Pos(pub i32, pub i32);
 
-
 #[doc = "This will be where the classifications of different simulation modes/styles will exist, largely separations between two dimensional and elementary automaton, but might get more broad"]
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, serde::Deserialize, serde::Serialize)]
-#[derive(Default)]
+#[derive(
+    Copy, Clone, PartialEq, Eq, Hash, Debug, serde::Deserialize, serde::Serialize, Default,
+)]
 pub enum RunModes {
     #[default]
     TwoDimensional,
     Elementary,
 }
-
-
 
 pub trait UserInterface {
     fn update_menu_bar(&self, ctx: &egui::Context);

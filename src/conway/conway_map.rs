@@ -120,13 +120,13 @@ impl Map {
         //self.cache_initial_state();
     }
     pub fn cache_initial_state(&mut self) {
-        self.initial_state = self.cells.clone();
+        self.initial_state.clone_from(&self.cells);
         //basically anytime this has been called, AND update has not been called, we can garuntee we
         //are in the "initial" state of the app
         self.is_initial = true;
     }
     pub fn restore_initial_state(&mut self) {
-        self.cells = self.initial_state.clone();
+        self.cells.clone_from(&self.initial_state);
         self.is_initial = true;
     }
     pub fn clear(&mut self) {
@@ -304,8 +304,6 @@ impl Map {
         }
 
         let t = (self.cell_size - min_cell_size) / (max_cell_size - min_cell_size); // Normalized value between 0 and 1
-
-        
 
         min_thickness + t * (max_thickness - min_thickness)
     }
