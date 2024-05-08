@@ -3,6 +3,8 @@ pub mod app;
 pub mod conway;
 pub use app::ConwaySim;
 pub use conway::conway_map::Map;
+pub use consts::*;
+use web_sys::console;
 
 #[derive(Default)]
 pub struct RunStatistics {
@@ -21,6 +23,23 @@ impl RunStatistics {
         }
     }
 }
+/// DECLARATION OF CONSTS
+
+pub mod consts {
+pub const ZOOM_SENSITIVITY: f32 = 0.1;
+
+pub const CELL_MAX: f32 = 50.0;
+pub const CELL_MIN: f32 = 0.1;
+}
+
+
+
+
+
+
+
+
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 #[derive(Default)]
@@ -39,4 +58,20 @@ pub enum RunModes {
 pub trait UserInterface {
     fn update_menu_bar(&self, ctx: &egui::Context);
     fn update_side_panel(&mut self, ctx: &egui::Context);
+}
+
+pub struct Viewport {
+    pub rect: egui::Rect,
+    pub scale: f32, // Scale factor for zooming
+    pub offset: egui::Vec2, // Offset for panning
+}
+
+impl Default for Viewport {
+    fn default() -> Self {
+        Self {
+            rect: egui::Rect::from_min_size(egui::Pos2::ZERO, egui::Vec2::ZERO),
+            scale: 1.0,
+            offset: egui::Vec2::default(),
+        }
+    }
 }

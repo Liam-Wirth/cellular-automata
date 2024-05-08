@@ -1,11 +1,25 @@
+use crate::consts::*;
 use crate::conway;
 use crate::RunModes;
 use crate::UserInterface;
+use crate::Viewport;
 use conway::conway_map;
 use eframe::egui;
 use egui::Id;
+use web_sys::console;
+
+
+#[derive(Default)]
+pub struct MouseState {
+    pub is_dragging: bool,
+    pub last_pos: Option<egui::Pos2>,
+}
+
+
+
 use egui::LayerId;
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
+
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct ConwaySim {
@@ -24,7 +38,10 @@ pub struct ConwaySim {
     view_stats: bool,
     first_run: bool,
     mode: RunModes,
+    #[serde(skip)] // This how you opt-out of serialization of a field
+    viewport:Viewport,
 }
+
 // TODO: implement feature so that the user can click and drag on the main view window to move
 // their view around instead of using sliders, cause sliders are janky as fuck
 
@@ -46,9 +63,11 @@ impl Default for ConwaySim {
             reset: false,
             first_run: true,
             mode: RunModes::default(),
+            viewport: Viewport::default(),
         }
     }
 }
+
 
 impl ConwaySim {
     /// Called once before the first frame.
@@ -63,9 +82,20 @@ impl ConwaySim {
 
         Default::default()
     }
+    fn handle_mouse_events(&mut self, ctx: &egui::Context) {
+
+
+    }
+
+    fn handle_scroll(&mut self, ctx: &egui::Context, scroll_delta: egui::Vec2) {
+         
+    }
 
     fn update_simulation(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
+            let viewport_rect = ui.available_rect_before_wrap();
+            self.viewport.rect = viewport_rect;
+
             let gridline_layer: egui::LayerId =
                 LayerId::new(egui::Order::Foreground, Id::from("gridlines"));
             let painter = egui::Painter::new(
@@ -79,8 +109,9 @@ impl ConwaySim {
                 ui.available_rect_before_wrap(),
             );
             ui.expand_to_include_rect(painter.clip_rect());
-            ui.expand_to_include_rect(line_painter.clip_rect());
+            //ui.expand_to_include_rect(line_painter.clip_rect());
             self.rect = Some(painter.clip_rect());
+            //Logic that actually draws the screen I think
             let mut shapes: Vec<egui::Shape> = if self.map.light_mode {
                 vec![egui::Shape::rect_filled(
                     self.rect.unwrap(),
@@ -105,6 +136,12 @@ impl ConwaySim {
                 line_painter.extend(lines);
             }
         });
+            if ctx.input(|i| i.pointer.secondary_clicked() && i.pointer.is_decidedly_dragging()) {
+                println!("Dragging and such");
+                use crate::app::console;
+                console::log_1(&"erm, what the deuce".into());
+
+            }
 
         if self.view_stats {
             egui::Window::new("Stats").show(ctx, |ui| {
@@ -117,7 +154,7 @@ impl UserInterface for ConwaySim {
     fn update_side_panel(&mut self, ctx: &egui::Context) {
         egui::SidePanel::left("Menu").show(ctx, |ui| {
             ui.add(
-                egui::Slider::new(&mut self.map.cell_size, 0.1..=50.0)
+                egui::Slider::new(&mut self.map.cell_size, CELL_MIN..=CELL_MAX)
                     .step_by(0.1)
                     .orientation(egui::SliderOrientation::Horizontal)
                     .text("Cell Size"),
@@ -139,18 +176,18 @@ impl UserInterface for ConwaySim {
             // BUG: below sliders are bugged, if one of the viewports is updated, say, the x axis, the vertical
             // lines will not move along with the horizontal ones, leading to a realy weird effect, and vice
             // versa for the y axis, with the other lines not moving, while the vertical ones will move
-            // ui.add(
-            //     egui::Slider::new(&mut self.map.x_axis, -1000..=1000)
-            //         .step_by(1.0)
-            //         .orientation(egui::SliderOrientation::Horizontal)
-            //         .text("X Axis"),
-            // );
-            // ui.add(
-            //     egui::Slider::new(&mut self.map.y_axis, -1000..=1000)
-            //         .step_by(1.0)
-            //         .orientation(egui::SliderOrientation::Horizontal)
-            //         .text("Y Axis"),
-            // );
+             ui.add(
+                 egui::Slider::new(&mut self.map.x_axis, -1000..=1000)
+                     .step_by(1.0)
+                     .orientation(egui::SliderOrientation::Horizontal)
+                     .text("X Axis"),
+             );
+             ui.add(
+                 egui::Slider::new(&mut self.map.y_axis, -1000..=1000)
+                     .step_by(1.0)
+                     .orientation(egui::SliderOrientation::Horizontal)
+                     .text("Y Axis"),
+             );
             ui.add(
                 egui::Slider::new(&mut self.map.map_size, 10..=500)
                     .step_by(1.0)

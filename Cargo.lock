@@ -592,6 +592,7 @@ dependencies = [
  "serde",
  "ttf-parser",
  "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

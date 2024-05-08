@@ -37,15 +37,25 @@ const NEIGHBORS: [(i32, i32); 8] = [
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
+/// Eventually will be generalized to be a "Map" struct, but for now it's just a Conway's Game of
 pub struct Map {
-    pub x_axis: i32,
-    pub y_axis: i32,
-    pub cell_size: f32,
+/// X axis of the map
+    pub x_axis: i32, 
+/// Y axis of the map
+    pub y_axis: i32, 
+/// Size of each cell in the map, will be clamped between constants CELL_MIN and CELL_MAX
+    pub cell_size: f32, 
+/// Size of the map, eventually I want this to be separate from our viewport
     pub map_size: i32,
+/// Speed of the simulation, in what unit? only God knows
     pub speed: u128,
+/// Frames per second
     pub fps: u32,
+///Determines the scarcity of cells in the initial state
     pub rand_scarcity: u32,
+/// Self explanatory
     pub light_mode: bool,
+/// Whether or not to draw gridlines
     pub lines: bool,
     pub is_initial: bool,
 
@@ -133,6 +143,7 @@ impl Map {
         self.cells = HashSet::new();
     }
     pub fn fps_to_speed(fps: f32) -> u128 {
+        //magic number?
         Duration::new(0, (1000000000.0 / fps) as u32).as_millis()
     }
     // NOTE: This could probably be useful for the refactor
@@ -196,6 +207,7 @@ impl Map {
         }
         (max_x, max_y)
     }
+    //What does this do????
     pub fn center_cells(&mut self, rect: Rect) {
         let (min_x, min_y) = self.find_min();
         let (max_x, max_y) = self.find_max();
@@ -214,9 +226,11 @@ impl Map {
 
         self.cells = elems_c;
     }
+    // TODO: Refactor this code to actually work based on viewport logic instead, this might help
+    // fix that bug I'm having regarding the x and y values not moving along when we update them
     pub fn draw_lines(&mut self, rect: Rect, shapes: &mut Vec<Shape>) {
         // Calculate stroke thickness based on cell size
-        let stroke_thickness = self.exponential_easing(0.1, 50.0, 0.0, 2.0);
+        let stroke_thickness = self.exponential_easing(crate::CELL_MIN, crate::CELL_MAX, 0.0, 2.0);
 
         // Draw vertical grid lines
         for i in 0..=self.map_size {
@@ -289,6 +303,7 @@ impl Map {
         let exponent = -k * (self.cell_size - x_0);
         1.0 / (1.0 + exponent.exp())
     }
+    /// Another easing function but this time we use exponential stuff cause I can
     fn exponential_easing(
         &mut self,
         min_cell_size: f32,
