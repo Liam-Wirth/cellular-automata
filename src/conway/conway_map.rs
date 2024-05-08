@@ -6,6 +6,13 @@
 
 // TODO: Implement a "stamp" or blueprint feature in which the user can stamp their own pre-saved
 // game of life patterns into the map? Provide some basic ones like gliders and such
+
+
+
+// TODO: clean up this code, remove magic values
+// TODO: Get better understanding of what every funciton does + add documentation for each function
+// TODO: Refactor the code to be more modular, and to be more easily testable
+
 use std::{collections::HashSet, fs};
 
 use crate::Pos;
@@ -13,27 +20,14 @@ use egui::{vec2, Color32, Rect, Rounding, Shape};
 use instant::{Duration, Instant};
 use rand::{thread_rng, Rng};
 
+use super::{DEFAULT_CELL_SIZE, DEFAULT_MAP_SIZE, NEIGHBORS};
+
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConwayCell {
     Alive = 1,
     Dead = 0,
 }
-/// "Neighbor" cells around the current cell, coordinates are organized in standard x,y format
-/// ## Think of the layout like this:
-/// (-1,1 ) (0,1 )  (1,1 )
-/// (-1,0 ) (cell)  (1,0 )
-/// (-1,-1) (0,-1)  (1,-1)
-const NEIGHBORS: [(i32, i32); 8] = [
-    (-1, 1),
-    (0, 1),
-    (1, 1),
-    (-1, 0),
-    (1, 0),
-    (-1, -1),
-    (0, -1),
-    (1, -1),
-];
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
@@ -75,13 +69,14 @@ impl Default for Map {
 impl Map {
     pub fn new() -> Self {
         Self {
-            fps: 10,
-            speed: Map::fps_to_speed(10.0),
+            
+            fps: 10, 
+            speed: Map::fps_to_speed(10.0), //why the hell am I storing the "speed" value if I'm just deriving it from fps?
             cells: HashSet::new(),
             initial_state: HashSet::new(),
             last_frame_time: Instant::now(),
-            map_size: 75,
-            cell_size: 10.0,
+            map_size: DEFAULT_MAP_SIZE,
+            cell_size: DEFAULT_CELL_SIZE,
             x_axis: 0,
             y_axis: 0,
             rand_scarcity: 3,
@@ -116,6 +111,8 @@ impl Map {
         })
     }
 
+    ///Generates the random initial state for the map, 
+    /// Bases the way the initial state is off of the "rand_scarcity" value
     pub fn gen_random(&mut self) {
         self.clear();
         for y in 0..=self.map_size - 4 {
@@ -139,6 +136,8 @@ impl Map {
         self.cells.clone_from(&self.initial_state);
         self.is_initial = true;
     }
+    
+    
     pub fn clear(&mut self) {
         self.cells = HashSet::new();
     }
@@ -147,6 +146,8 @@ impl Map {
         Duration::new(0, (1000000000.0 / fps) as u32).as_millis()
     }
     // NOTE: This could probably be useful for the refactor
+    /// How the simulation runs, this is the main function that updates the state of the map, is called once every draw thread
+    /// not the fastest way to run a simulation, but could work if it's thrown into some worker thread maybe but idrc
     pub fn update(&mut self) {
         let duration_since_last_frame = Instant::now().duration_since(self.last_frame_time);
         //below line basically forces fps to work. like, it's saying "if last frame happened, but
@@ -160,7 +161,9 @@ impl Map {
             for step in NEIGHBORS {
                 let mut xy = Pos(cell.0 + step.0, cell.1 + step.1);
 
+                // Does toroidal checks here, basically coordinates on the edge will "wrap around"
                 xy.0 = self.apply_periodic_boundary(xy.0, self.map_size);
+                //Same here
                 xy.1 = self.apply_periodic_boundary(xy.1, self.map_size);
 
                 if !checked.contains(&xy) {
