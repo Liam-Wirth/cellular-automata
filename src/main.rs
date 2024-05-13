@@ -1,4 +1,4 @@
-#![warn(clippy::all, rust_2018_idioms)]
+//#![warn(clippy::all, rust_2018_idioms)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 // When compiling natively:
@@ -29,7 +29,6 @@ fn main() -> eframe::Result<()> {
 fn main() {
     // Redirect `log` message to `console.log` and friends:
     eframe::WebLogger::init(log::LevelFilter::Debug).ok();
-    console::log_1(&"erm, what the deuce".into());
     let the_canvas_id = String::from("Cellular-Automata beta 0.0.1");
     let web_options = eframe::WebOptions::default();
     wasm_bindgen_futures::spawn_local(async {
