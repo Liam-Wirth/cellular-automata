@@ -6,7 +6,6 @@ use crate::Viewport;
 use conway::conway_map;
 use eframe::egui;
 use egui::Id;
-use web_sys::console;
 
 
 #[derive(Default)]
@@ -138,9 +137,6 @@ impl ConwaySim {
         });
             if ctx.input(|i| i.pointer.secondary_clicked() && i.pointer.is_decidedly_dragging()) {
                 println!("Dragging and such");
-                use crate::app::console;
-                console::log_1(&"erm, what the deuce".into());
-
             }
 
         if self.view_stats {

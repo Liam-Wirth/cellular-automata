@@ -4,7 +4,6 @@ pub mod conway;
 pub use app::ConwaySim;
 pub use conway::conway_map::Map;
 pub use consts::*;
-use web_sys::console;
 
 #[derive(Default)]
 pub struct RunStatistics {
