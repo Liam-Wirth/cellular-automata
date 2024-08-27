@@ -23,3 +23,6 @@
 
 4. Only after you get all of the above functionality implemented and working, can you go back to rewriting conways, that way you'll have a good generalized base for how you want things to go, and you can build your app from there
 
+
+see my implementation of the boids simulation to figure out how you would multithread this code
+
