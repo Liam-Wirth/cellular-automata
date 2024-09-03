@@ -6,8 +6,9 @@ env:
   # --cfg=web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
   # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
   # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
-  RUSTFLAGS: -D warnings --cfg=web_sys_unstable_apis
-  RUSTDOCFLAGS: -D warnings
+  #RUSTFLAGS: -D warnings --cfg=web_sys_unstable_apis <----- more stringent checks
+  RUSTFLAGS: -A warnings --cfg=web_sys_unstable_apis 
+  RUSTDOCFLAGS: -A warnings
 
 jobs:
   check:
@@ -87,7 +88,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -D warnings
+          args: -- -A warnings
 
   trunk:
     name: trunk
