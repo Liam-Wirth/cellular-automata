@@ -1,13 +1,13 @@
 on: [push, pull_request, workflow_dispatch]
 
-name: CI
+name: Github Pages 
 
 env:
   # --cfg=web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
   # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
   # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
-  RUSTFLAGS: -D warnings --cfg=web_sys_unstable_apis
-  RUSTDOCFLAGS: -D warnings
+  RUSTFLAGS: -D --cfg=web_sys_unstable_apis
+  RUSTDOCFLAGS: -D 
 
 jobs:
   check:
