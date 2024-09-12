@@ -1,10 +1,13 @@
-on: [push, pull_request, workflow_dispatch]
 name: Continuous deployment
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
   # workflow_run:
   #   workflows: [Continuous integration]
   #   types: [completed]
