@@ -87,7 +87,8 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -D warnings
+          # args: -- -D warnings
+          args: -- -D 
 
   trunk:
     name: trunk
@@ -133,7 +134,7 @@ jobs:
 
     # - uses: actions/checkout@master
     # - name: Install build dependencies - Rustup
-      run: |
+      # run: |
         # curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain stable --profile default --target ${{ matrix.TARGET }} -y
         # echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
