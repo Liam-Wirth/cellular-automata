@@ -35,6 +35,7 @@ jobs:
       - uses: jetli/trunk-action@v0.1.0
         with:
           public_url: "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+      -name: kill
       - run: trunk build --release --public-url $public_url
         env:
           public_url: "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
