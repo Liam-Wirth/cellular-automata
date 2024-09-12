@@ -110,8 +110,8 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_branch: gh-pages
-        publish_dir: ./dist  # Or wherever your `trunk` build artifacts are located
+          publish_branch: gh-pages
+          publish_dir: ./dist  # Or wherever your `trunk` build artifacts are located
   # build:
   #   runs-on: ${{ matrix.os }}
   #   strategy:
