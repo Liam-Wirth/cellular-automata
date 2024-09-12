@@ -7,8 +7,6 @@
 // TODO: Implement a "stamp" or blueprint feature in which the user can stamp their own pre-saved
 // game of life patterns into the map? Provide some basic ones like gliders and such
 
-
-
 // TODO: clean up this code, remove magic values
 // TODO: Get better understanding of what every funciton does + add documentation for each function
 // TODO: Refactor the code to be more modular, and to be more easily testable
@@ -33,23 +31,23 @@ pub enum ConwayCell {
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 /// Eventually will be generalized to be a "Map" struct, but for now it's just a Conway's Game of
 pub struct Map {
-/// X axis of the map
-    pub x_axis: i32, 
-/// Y axis of the map
-    pub y_axis: i32, 
-/// Size of each cell in the map, will be clamped between constants CELL_MIN and CELL_MAX
-    pub cell_size: f32, 
-/// Size of the map, eventually I want this to be separate from our viewport
+    /// X axis of the map
+    pub x_axis: i32,
+    /// Y axis of the map
+    pub y_axis: i32,
+    /// Size of each cell in the map, will be clamped between constants CELL_MIN and CELL_MAX
+    pub cell_size: f32,
+    /// Size of the map, eventually I want this to be separate from our viewport
     pub map_size: i32,
-/// Speed of the simulation, in what unit? only God knows
+    /// Speed of the simulation, in what unit? only God knows
     pub speed: u128,
-/// Frames per second
+    /// Frames per second
     pub fps: u32,
-///Determines the scarcity of cells in the initial state
+    ///Determines the scarcity of cells in the initial state
     pub rand_scarcity: u32,
-/// Self explanatory
+    /// Self explanatory
     pub light_mode: bool,
-/// Whether or not to draw gridlines
+    /// Whether or not to draw gridlines
     pub lines: bool,
     pub is_initial: bool,
 
@@ -69,8 +67,7 @@ impl Default for Map {
 impl Map {
     pub fn new() -> Self {
         Self {
-            
-            fps: 10, 
+            fps: 10,
             speed: Map::fps_to_speed(10.0), //why the hell am I storing the "speed" value if I'm just deriving it from fps?
             cells: HashSet::new(),
             initial_state: HashSet::new(),
@@ -111,7 +108,7 @@ impl Map {
         })
     }
 
-    ///Generates the random initial state for the map, 
+    ///Generates the random initial state for the map,
     /// Bases the way the initial state is off of the "rand_scarcity" value
     pub fn gen_random(&mut self) {
         self.clear();
@@ -136,8 +133,7 @@ impl Map {
         self.cells.clone_from(&self.initial_state);
         self.is_initial = true;
     }
-    
-    
+
     pub fn clear(&mut self) {
         self.cells = HashSet::new();
     }

@@ -7,14 +7,11 @@ use conway::conway_map;
 use eframe::egui;
 use egui::Id;
 
-
 #[derive(Default)]
 pub struct MouseState {
     pub is_dragging: bool,
     pub last_pos: Option<egui::Pos2>,
 }
-
-
 
 use egui::LayerId;
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -38,7 +35,7 @@ pub struct ConwaySim {
     first_run: bool,
     mode: RunModes,
     #[serde(skip)] // This how you opt-out of serialization of a field
-    viewport:Viewport,
+    viewport: Viewport,
 }
 
 // TODO: implement feature so that the user can click and drag on the main view window to move
@@ -67,7 +64,6 @@ impl Default for ConwaySim {
     }
 }
 
-
 impl ConwaySim {
     /// Called once before the first frame.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
@@ -81,14 +77,9 @@ impl ConwaySim {
 
         Default::default()
     }
-    fn handle_mouse_events(&mut self, ctx: &egui::Context) {
+    fn handle_mouse_events(&mut self, _ctx: &egui::Context) {}
 
-
-    }
-
-    fn handle_scroll(&mut self, ctx: &egui::Context, scroll_delta: egui::Vec2) {
-         
-    }
+    fn handle_scroll(&mut self, _ctx: &egui::Context, _scroll_delta: egui::Vec2) {}
 
     fn update_simulation(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -135,9 +126,9 @@ impl ConwaySim {
                 line_painter.extend(lines);
             }
         });
-            if ctx.input(|i| i.pointer.secondary_clicked() && i.pointer.is_decidedly_dragging()) {
-                println!("Dragging and such");
-            }
+        if ctx.input(|i| i.pointer.secondary_clicked() && i.pointer.is_decidedly_dragging()) {
+            println!("Dragging and such");
+        }
 
         if self.view_stats {
             egui::Window::new("Stats").show(ctx, |ui| {
@@ -172,18 +163,18 @@ impl UserInterface for ConwaySim {
             // BUG: below sliders are bugged, if one of the viewports is updated, say, the x axis, the vertical
             // lines will not move along with the horizontal ones, leading to a realy weird effect, and vice
             // versa for the y axis, with the other lines not moving, while the vertical ones will move
-             ui.add(
-                 egui::Slider::new(&mut self.map.x_axis, -1000..=1000)
-                     .step_by(1.0)
-                     .orientation(egui::SliderOrientation::Horizontal)
-                     .text("X Axis"),
-             );
-             ui.add(
-                 egui::Slider::new(&mut self.map.y_axis, -1000..=1000)
-                     .step_by(1.0)
-                     .orientation(egui::SliderOrientation::Horizontal)
-                     .text("Y Axis"),
-             );
+            ui.add(
+                egui::Slider::new(&mut self.map.x_axis, -1000..=1000)
+                    .step_by(1.0)
+                    .orientation(egui::SliderOrientation::Horizontal)
+                    .text("X Axis"),
+            );
+            ui.add(
+                egui::Slider::new(&mut self.map.y_axis, -1000..=1000)
+                    .step_by(1.0)
+                    .orientation(egui::SliderOrientation::Horizontal)
+                    .text("Y Axis"),
+            );
             ui.add(
                 egui::Slider::new(&mut self.map.map_size, 10..=500)
                     .step_by(1.0)

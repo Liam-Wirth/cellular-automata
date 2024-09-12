@@ -1,6 +1,5 @@
 pub mod conway_map;
 
-
 pub const DEFAULT_MAP_SIZE: i32 = 75;
 pub const DEFAULT_CELL_SIZE: f32 = 10.0;
 
