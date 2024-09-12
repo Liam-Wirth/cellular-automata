@@ -5,6 +5,12 @@
 
 Built using Emilk's [eframe](https://github.com/emilk/egui/tree/master/crates/eframe), templite repo. Eframe is a framework for writing apps using [egui](https://github.com/emilk/egui/).
 
+## Todo:
+Make sure to update the build actions eventually to re-include -D warnings
+
+possibly cut back on CI/CD by trimming out alot of the excess deployment stuff?
+I dunno
+
 
 ## Credits/Thanks:
 Huge shoutout and thanks to [Todd Smith](https://github.com/toddATavail) In my research on trying to learn how to do all this, I stumbled across articles that he was also writing articles on simulating Elementary CAS, [First one Here](https://xebia.com/blog/cellular-automata-using-rust-part-i/) what was so interesting to me was the fact that he was also using Rust, and had yet to write the Third article in the mini-series, meaning he was actively writing them as I was working on the project. On a whim I reached out to him on linkedin, and he was kind enough to take time out of his day to look at my crappy rust code, and provide advice! I couldn't thank the man enough for doing that, as it meant alot to me to be able to have someone look at my code. If you have the time please make sure to check out his articles that I linked above and give em a read! 
