@@ -1,1 +1,7 @@
 [build]
+public_url = "/"
+
+[[hooks]]
+stage = "build"
+command = "sh"
+command_arguments = ["-c", "echo cellular-automata.wirthless.dev > dist/CNAME"]
