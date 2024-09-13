@@ -8,47 +8,31 @@ on:
     branches:
       - main
   workflow_dispatch:
-  # workflow_run:
-  #   workflows: [Continuous integration]
-  #   types: [completed]
-  #   branches: [main]
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      # Checkout the repository
       - uses: actions/checkout@v2
       
-      # Install the stable toolchain for Rust and target WASM
-      - uses: actions-rs/toolchain@v1
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           target: wasm32-unknown-unknown
       
-      # Cache Rust build artifacts
       - name: Rust Cache
         uses: Swatinem/rust-cache@v1
-
-      # Build the WASM with trunk
-      - name: Build with Trunk
-      - uses: jetli/trunk-action@v0.1.0
-        with:
-          public_url: "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
-      -name: kill
-      - run: trunk build --release --public-url $public_url
-        env:
-          public_url: "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
-
-      # Use wasm-bindgen to prepare the bindings
-      - name: Use wasm-bindgen
-        uses: jetli/wasm-bindgen-action@v0.1.0
       
-      # Deploy to GitHub Pages
+      - name: Install Trunk
+        uses: jetli/trunk-action@v0.1.0
+      
+      - name: Build with Trunk
+        run: |
+          trunk build --release --public-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+      
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: dist
-          # This option will not maintain any history of your previous pages deployment
-          # Set to false if you want all page builds to be committed to your gh-pages branch history
           single-commit: true
