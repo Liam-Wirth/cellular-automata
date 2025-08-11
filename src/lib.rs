@@ -47,7 +47,7 @@ pub enum RunModes {
 }
 
 pub trait UserInterface {
-    fn update_menu_bar(&self, ctx: &egui::Context);
+    fn update_menu_bar(&mut self, ctx: &egui::Context);
     fn update_side_panel(&mut self, ctx: &egui::Context);
 }
 

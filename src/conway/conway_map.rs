@@ -14,7 +14,7 @@
 use std::{collections::HashSet, fs};
 
 use crate::Pos;
-use egui::{vec2, Color32, Rect, Rounding, Shape};
+use egui::{vec2, Color32, Rect, CornerRadius, Shape};
 use instant::{Duration, Instant};
 use rand::{thread_rng, Rng};
 
@@ -284,7 +284,7 @@ impl Map {
                             self.cell_size * (c.1 + 1) as f32 - self.y_axis as f32,
                         ),
                 },
-                Rounding::ZERO,
+                CornerRadius::ZERO,
                 //TODO: Add a slider for the user on this one that allows them to choose the color
                 //if they want
                 if self.light_mode {
