@@ -40,6 +40,12 @@ pub struct ConwaySim {
     show_help: bool,
     #[serde(skip)]
     show_about: bool,
+    #[serde(skip)]
+    hovered_cell: Option<crate::Pos>,
+    #[serde(skip)]
+    is_painting: bool,
+    #[serde(skip)]
+    paint_mode: bool, // true = paint alive cells, false = erase cells
 }
 
 // TODO: implement feature so that the user can click and drag on the main view window to move
@@ -66,6 +72,9 @@ impl Default for ConwaySim {
             viewport: Viewport::default(),
             show_help: false,
             show_about: false,
+            hovered_cell: None,
+            is_painting: false,
+            paint_mode: true,
         }
     }
 }
@@ -123,6 +132,17 @@ impl ConwaySim {
                 self.map.lines = !self.map.lines;
             }
             
+            // T key to toggle toroidal display
+            if i.key_pressed(egui::Key::T) {
+                let old_toroidal = self.map.toroidal_display;
+                self.map.toroidal_display = !self.map.toroidal_display;
+                
+                // If we're turning off toroidal mode, reset to center
+                if old_toroidal && !self.map.toroidal_display {
+                    self.reset_viewport_position();
+                }
+            }
+            
             // Arrow keys for navigation
             let nav_speed = 10.0;
             if i.key_pressed(egui::Key::ArrowLeft) {
@@ -150,14 +170,9 @@ impl ConwaySim {
         });
     }
 
-    fn handle_mouse_events(&mut self, ctx: &egui::Context) {
-        // Handle mouse interactions for panning and cell editing
-        ctx.input(|i| {
-            if let Some(_pos) = i.pointer.interact_pos() {
-                // TODO: Implement click-to-toggle cells
-                // TODO: Implement drag-to-pan functionality
-            }
-        });
+    fn handle_mouse_events(&mut self, _ctx: &egui::Context) {
+        // This will be handled in the simulation area instead of globally
+        // to avoid interfering with UI interactions
     }
 
     fn update_simulation(&mut self, ctx: &egui::Context) {
@@ -195,6 +210,14 @@ impl ConwaySim {
                 )]
             };
             self.map.generate_cells(&mut shapes, self.rect.unwrap());
+            
+            // Draw cell highlight when simulation is paused and hovering over a cell
+            if !self.running {
+                if let Some(hovered_pos) = self.hovered_cell {
+                    self.map.draw_cell_highlight(hovered_pos, self.rect.unwrap(), &mut shapes);
+                }
+            }
+            
             painter.extend(shapes);
             if self.running {
                 self.map.update();
@@ -204,15 +227,130 @@ impl ConwaySim {
                 self.map.draw_lines(self.rect.unwrap(), &mut lines);
                 line_painter.extend(lines);
             }
+
+            // Handle mouse interactions within the simulation area
+            let response = ui.allocate_rect(viewport_rect, egui::Sense::click_and_drag());
+            
+            // Track hovered cell for highlighting (only when simulation is paused)
+            if !self.running && response.hovered() && !ui.input(|i| i.modifiers.shift) {
+                if let Some(pos) = response.hover_pos() {
+                    if let Some(rect) = self.rect {
+                        self.hovered_cell = self.map.screen_to_grid(pos, rect);
+                    }
+                }
+            } else {
+                self.hovered_cell = None;
+            }
+            
+            // Handle Shift + drag for panning
+            if ui.input(|i| i.modifiers.shift) {
+                if response.dragged() {
+                    ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+                    let delta = response.drag_delta();
+                    if delta.length() > 0.0 {
+                        // Convert screen delta to grid delta
+                        let grid_delta_x = (delta.x / self.map.cell_size) as i32;
+                        let grid_delta_y = (delta.y / self.map.cell_size) as i32;
+                        
+                        // Update viewport position (invert because we're moving the view)
+                        if self.map.toroidal_display {
+                            // In toroidal mode, allow infinite panning
+                            self.map.x_axis -= grid_delta_x;
+                            self.map.y_axis -= grid_delta_y;
+                        } else {
+                            // In standard mode, limit panning to reasonable bounds
+                            let max_pan = self.map.map_size * 2; // Allow panning 2x map size in each direction
+                            self.map.x_axis = (self.map.x_axis - grid_delta_x).clamp(-max_pan, max_pan);
+                            self.map.y_axis = (self.map.y_axis - grid_delta_y).clamp(-max_pan, max_pan);
+                        }
+                    }
+                } else if response.hovered() {
+                    ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
+                }
+            } else {
+                // Handle cell editing when simulation is paused
+                if !self.running {
+                    // Handle click and drag painting
+                    if response.drag_started() {
+                        self.is_painting = true;
+                        // Determine paint mode based on the first cell clicked
+                        if let Some(pos) = response.interact_pointer_pos() {
+                            if let Some(rect) = self.rect {
+                                if let Some(grid_pos) = self.map.screen_to_grid(pos, rect) {
+                                    // Set paint mode: if cell is alive, we'll be erasing; if dead, we'll be painting
+                                    self.paint_mode = !self.map.is_cell_alive(grid_pos);
+                                    // Paint/erase the first cell
+                                    self.paint_cell(grid_pos);
+                                }
+                            }
+                        }
+                    } else if response.dragged() && self.is_painting {
+                        // Continue painting while dragging
+                        if let Some(pos) = response.interact_pointer_pos() {
+                            if let Some(rect) = self.rect {
+                                if let Some(grid_pos) = self.map.screen_to_grid(pos, rect) {
+                                    self.paint_cell(grid_pos);
+                                }
+                            }
+                        }
+                    } else if response.drag_stopped() {
+                        self.is_painting = false;
+                    } else if response.clicked() && !self.is_painting {
+                        // Handle single click toggle (when not dragging)
+                        if let Some(pos) = response.interact_pointer_pos() {
+                            if let Some(rect) = self.rect {
+                                if let Some(grid_pos) = self.map.screen_to_grid(pos, rect) {
+                                    self.map.toggle_cell(grid_pos);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Handle zoom with Ctrl/Cmd + scroll (only when hovering over simulation area)
+            if response.hovered() {
+                let scroll_delta = ui.input(|i| i.smooth_scroll_delta);
+                if (ui.input(|i| i.modifiers.ctrl) || ui.input(|i| i.modifiers.mac_cmd)) && scroll_delta.y != 0.0 {
+                    // Zoom factor - make it more responsive
+                    let zoom_factor = 1.0 + (scroll_delta.y * 0.01);
+                    let new_cell_size = self.map.cell_size * zoom_factor;
+                    
+                    // Clamp cell size to reasonable bounds
+                    self.map.cell_size = new_cell_size.clamp(crate::CELL_MIN, crate::CELL_MAX);
+                }
+            }
         });
-        if ctx.input(|i| i.pointer.secondary_clicked() && i.pointer.is_decidedly_dragging()) {
-            println!("Dragging and such");
-        }
+        // Remove the old dragging debug code since we have proper panning now
 
         if self.view_stats {
             egui::Window::new("Stats").show(ctx, |ui| {
                 ui.label("TODO :(");
             });
+        }
+    }
+
+    /// Reset the viewport to default position and zoom
+    fn reset_viewport(&mut self) {
+        self.map.x_axis = 0;
+        self.map.y_axis = 0;
+        self.map.cell_size = crate::conway::DEFAULT_CELL_SIZE;
+    }
+
+    /// Reset only the viewport position to center, keeping zoom level
+    fn reset_viewport_position(&mut self) {
+        self.map.x_axis = 0;
+        self.map.y_axis = 0;
+    }
+
+    /// Paint or erase a cell based on the current paint mode
+    fn paint_cell(&mut self, grid_pos: crate::Pos) {
+        if self.paint_mode {
+            // Paint mode: make cell alive
+            self.map.set_cell_alive(grid_pos);
+        } else {
+            // Erase mode: make cell dead
+            self.map.set_cell_dead(grid_pos);
         }
     }
 }
@@ -372,6 +510,20 @@ impl UserInterface for ConwaySim {
                                 }
                             }
                         });
+                        
+                        ui.add_space(4.0);
+                        
+                        // Toroidal display toggle
+                        let old_toroidal = self.map.toroidal_display;
+                        if ui.checkbox(&mut self.map.toroidal_display, "🌐 Toroidal Display")
+                            .on_hover_text("Show the map wrapping infinitely (matches simulation behavior)")
+                            .changed() 
+                        {
+                            // If we're turning off toroidal mode, reset to center
+                            if old_toroidal && !self.map.toroidal_display {
+                                self.reset_viewport_position();
+                            }
+                        }
                     });
                     
                     ui.add_space(8.0);
@@ -398,7 +550,23 @@ impl UserInterface for ConwaySim {
                         );
                         
                         ui.add_space(6.0);
-                        ui.small("💡 Tip: Click and drag on the simulation to pan around");
+                        
+                        // Reset viewport button
+                        if ui.add(egui::Button::new("🎯 Reset Viewport"))
+                            .on_hover_text("Reset zoom and position to default")
+                            .clicked() 
+                        {
+                            self.reset_viewport();
+                        }
+                        
+                        ui.add_space(4.0);
+                        ui.small("💡 Tips:");
+                        ui.small("• Shift + drag to pan");
+                        ui.small("• Ctrl/Cmd + scroll to zoom");
+                        if !self.running {
+                            ui.small("• Click/drag to paint cells");
+                            ui.small("• First cell clicked sets paint/erase mode");
+                        }
                     });
                     
                     // Statistics section (placeholder for future)
@@ -425,7 +593,17 @@ impl UserInterface for ConwaySim {
                     ui.separator();
                     
                     // Status indicator
-                    let status_text = if self.running { "🟢 Running" } else { "⏸ Paused" };
+                    let status_text = if self.running { 
+                        "🟢 Running" 
+                    } else if self.is_painting {
+                        if self.paint_mode {
+                            "🎨 Painting cells (drag to draw)"
+                        } else {
+                            "🧽 Erasing cells (drag to erase)"
+                        }
+                    } else { 
+                        "⏸ Paused - Click/drag to edit cells" 
+                    };
                     let status_color = if self.running { 
                         egui::Color32::from_rgb(34, 139, 34) 
                     } else { 
@@ -485,6 +663,8 @@ impl eframe::App for ConwaySim {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+
+
         // Handle keyboard input first
         self.handle_keyboard_input(ctx);
         self.handle_mouse_events(ctx);
@@ -528,6 +708,12 @@ impl ConwaySim {
                         });
                     });
                     ui.horizontal(|ui| {
+                        ui.label("Shift + Drag");
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            ui.label("Pan View");
+                        });
+                    });
+                    ui.horizontal(|ui| {
                         ui.label("R");
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.label("Generate Random");
@@ -563,12 +749,43 @@ impl ConwaySim {
                 ui.add_space(8.0);
                 
                 ui.group(|ui| {
+                    ui.label(egui::RichText::new("Cell Editing").strong());
+                    ui.add_space(4.0);
+                    ui.horizontal(|ui| {
+                        ui.label("Click");
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            ui.label("Toggle Cell");
+                        });
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("Click + Drag");
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            ui.label("Paint/Erase Cells");
+                        });
+                    });
+                });
+                
+                ui.add_space(8.0);
+                
+                ui.group(|ui| {
                     ui.label(egui::RichText::new("View").strong());
                     ui.add_space(4.0);
                     ui.horizontal(|ui| {
                         ui.label("G");
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.label("Toggle Gridlines");
+                        });
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("T");
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            ui.label("Toggle Toroidal Display");
+                        });
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("Ctrl/Cmd + Scroll");
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            ui.label("Zoom In/Out");
                         });
                     });
                     ui.horizontal(|ui| {

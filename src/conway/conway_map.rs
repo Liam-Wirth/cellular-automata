@@ -49,6 +49,8 @@ pub struct Map {
     pub light_mode: bool,
     /// Whether or not to draw gridlines
     pub lines: bool,
+    /// Whether to display the map as toroidal/infinite (wrapping)
+    pub toroidal_display: bool,
     pub is_initial: bool,
 
     #[serde(skip)]
@@ -79,6 +81,7 @@ impl Map {
             rand_scarcity: 3,
             light_mode: true,
             lines: false,
+            toroidal_display: false,
             is_initial: true,
         }
     }
@@ -136,6 +139,139 @@ impl Map {
 
     pub fn clear(&mut self) {
         self.cells = HashSet::new();
+    }
+
+    /// Toggle a cell at the given position (alive -> dead, dead -> alive)
+    pub fn toggle_cell(&mut self, pos: Pos) {
+        if self.cells.contains(&pos) {
+            self.cells.remove(&pos);
+        } else {
+            self.cells.insert(pos);
+        }
+    }
+
+    /// Check if a cell is alive at the given position
+    pub fn is_cell_alive(&self, pos: Pos) -> bool {
+        self.cells.contains(&pos)
+    }
+
+    /// Set a cell to be alive
+    pub fn set_cell_alive(&mut self, pos: Pos) {
+        self.cells.insert(pos);
+    }
+
+    /// Set a cell to be dead
+    pub fn set_cell_dead(&mut self, pos: Pos) {
+        self.cells.remove(&pos);
+    }
+
+    /// Convert screen coordinates to grid position
+    pub fn screen_to_grid(&self, screen_pos: egui::Pos2, rect: Rect) -> Option<Pos> {
+        // Calculate center offset
+        let center_offset_x = rect.width() / 2.0 - (self.map_size as f32 * self.cell_size) / 2.0;
+        let center_offset_y = rect.height() / 2.0 - (self.map_size as f32 * self.cell_size) / 2.0;
+        
+        // Calculate the grid position accounting for centering
+        let relative_x = screen_pos.x - rect.min.x - center_offset_x;
+        let relative_y = screen_pos.y - rect.min.y - center_offset_y;
+        
+        let grid_x = (relative_x / self.cell_size) as i32 + self.x_axis;
+        let grid_y = (relative_y / self.cell_size) as i32 + self.y_axis;
+        
+        // In toroidal mode, wrap coordinates to map bounds
+        if self.toroidal_display {
+            let wrapped_x = ((grid_x % self.map_size) + self.map_size) % self.map_size;
+            let wrapped_y = ((grid_y % self.map_size) + self.map_size) % self.map_size;
+            Some(Pos(wrapped_x, wrapped_y))
+        } else {
+            Some(Pos(grid_x, grid_y))
+        }
+    }
+
+    /// Convert grid position to screen coordinates
+    pub fn grid_to_screen(&self, grid_pos: Pos, rect: Rect) -> egui::Rect {
+        // Calculate center offset
+        let center_offset_x = rect.width() / 2.0 - (self.map_size as f32 * self.cell_size) / 2.0;
+        let center_offset_y = rect.height() / 2.0 - (self.map_size as f32 * self.cell_size) / 2.0;
+        
+        let screen_x = rect.min.x + center_offset_x + (grid_pos.0 - self.x_axis) as f32 * self.cell_size;
+        let screen_y = rect.min.y + center_offset_y + (grid_pos.1 - self.y_axis) as f32 * self.cell_size;
+        
+        egui::Rect::from_min_size(
+            egui::Pos2::new(screen_x, screen_y),
+            egui::Vec2::splat(self.cell_size)
+        )
+    }
+
+    /// Draw a highlight over a specific cell
+    pub fn draw_cell_highlight(&self, grid_pos: Pos, rect: Rect, shapes: &mut Vec<Shape>) {
+        let highlight_color = if self.light_mode {
+            Color32::from_rgba_unmultiplied(0, 100, 255, 100) // Blue with transparency
+        } else {
+            Color32::from_rgba_unmultiplied(100, 150, 255, 100) // Light blue with transparency
+        };
+        
+        if self.toroidal_display {
+            // In toroidal mode, draw highlights for all visible instances of this cell
+            self.draw_cell_highlight_toroidal(grid_pos, rect, shapes, highlight_color);
+        } else {
+            // Standard mode: single highlight
+            let cell_rect = self.grid_to_screen(grid_pos, rect);
+            if rect.intersects(cell_rect) {
+                self.draw_single_highlight(cell_rect, shapes, highlight_color);
+            }
+        }
+    }
+
+    fn draw_cell_highlight_toroidal(&self, grid_pos: Pos, rect: Rect, shapes: &mut Vec<Shape>, highlight_color: Color32) {
+        // Calculate center offset
+        let center_offset_x = rect.width() / 2.0 - (self.map_size as f32 * self.cell_size) / 2.0;
+        let center_offset_y = rect.height() / 2.0 - (self.map_size as f32 * self.cell_size) / 2.0;
+        
+        // Calculate how many times we need to tile the map to fill the viewport
+        let map_pixel_size = self.map_size as f32 * self.cell_size;
+        
+        // Calculate the range of tiles needed to cover the entire viewport
+        let start_tile_x = ((rect.min.x - center_offset_x) / map_pixel_size).floor() as i32 - 1;
+        let end_tile_x = ((rect.max.x - center_offset_x) / map_pixel_size).ceil() as i32 + 1;
+        let start_tile_y = ((rect.min.y - center_offset_y) / map_pixel_size).floor() as i32 - 1;
+        let end_tile_y = ((rect.max.y - center_offset_y) / map_pixel_size).ceil() as i32 + 1;
+        
+        // Draw highlights for all visible instances of this cell
+        for tile_x in start_tile_x..=end_tile_x {
+            for tile_y in start_tile_y..=end_tile_y {
+                let tile_offset_x = tile_x as f32 * map_pixel_size;
+                let tile_offset_y = tile_y as f32 * map_pixel_size;
+                
+                let screen_x = rect.min.x + center_offset_x + tile_offset_x + (grid_pos.0 - self.x_axis) as f32 * self.cell_size;
+                let screen_y = rect.min.y + center_offset_y + tile_offset_y + (grid_pos.1 - self.y_axis) as f32 * self.cell_size;
+                
+                let cell_rect = Rect {
+                    min: egui::Pos2::new(screen_x, screen_y),
+                    max: egui::Pos2::new(screen_x + self.cell_size, screen_y + self.cell_size),
+                };
+                
+                if rect.intersects(cell_rect) {
+                    self.draw_single_highlight(cell_rect, shapes, highlight_color);
+                }
+            }
+        }
+    }
+
+    fn draw_single_highlight(&self, cell_rect: Rect, shapes: &mut Vec<Shape>, highlight_color: Color32) {
+        shapes.push(Shape::rect_filled(
+            cell_rect,
+            CornerRadius::ZERO,
+            highlight_color,
+        ));
+        
+        // Add a border
+        shapes.push(Shape::rect_stroke(
+            cell_rect,
+            CornerRadius::ZERO,
+            egui::Stroke::new(1.0, Color32::from_rgb(0, 100, 255)),
+            egui::epaint::StrokeKind::Outside,
+        ));
     }
     pub fn fps_to_speed(fps: f32) -> u128 {
         //magic number?
@@ -225,74 +361,130 @@ impl Map {
 
         self.cells = elems_c;
     }
-    // TODO: Refactor this code to actually work based on viewport logic instead, this might help
-    // fix that bug I'm having regarding the x and y values not moving along when we update them
+    /// Draw grid lines that properly align with the viewport and cells
     pub fn draw_lines(&mut self, rect: Rect, shapes: &mut Vec<Shape>) {
         // Calculate stroke thickness based on cell size
-        let stroke_thickness = self.exponential_easing(crate::CELL_MIN, crate::CELL_MAX, 0.0, 2.0);
+        let stroke_thickness = self.exponential_easing(crate::CELL_MIN, crate::CELL_MAX, 0.1, 1.5);
+        
+        // Grid color based on theme
+        let grid_color = if self.light_mode {
+            Color32::from_gray(200)
+        } else {
+            Color32::from_gray(60)
+        };
+
+        // Calculate the offset for grid alignment
+        let offset_x = (self.x_axis as f32 * self.cell_size) % self.cell_size;
+        let offset_y = (self.y_axis as f32 * self.cell_size) % self.cell_size;
 
         // Draw vertical grid lines
-        for i in 0..=self.map_size {
-            let x = rect.min.x + self.cell_size * i as f32 - self.x_axis as f32;
-            shapes.push(Shape::line_segment(
-                [
-                    egui::Pos2::new(x, rect.min.y),
-                    egui::Pos2::new(x, rect.min.y + self.cell_size * self.map_size as f32),
-                ],
-                egui::Stroke::new(
-                    stroke_thickness,
-                    if i == self.map_size {
-                        Color32::RED
-                    } else {
-                        Color32::GRAY
-                    },
-                ),
-            ));
+        let num_vertical_lines = (rect.width() / self.cell_size).ceil() as i32 + 2;
+        for i in 0..num_vertical_lines {
+            let x = rect.min.x + (i as f32 * self.cell_size) - offset_x;
+            if x >= rect.min.x - self.cell_size && x <= rect.max.x + self.cell_size {
+                shapes.push(Shape::line_segment(
+                    [
+                        egui::Pos2::new(x, rect.min.y),
+                        egui::Pos2::new(x, rect.max.y),
+                    ],
+                    egui::Stroke::new(stroke_thickness, grid_color),
+                ));
+            }
         }
 
         // Draw horizontal grid lines
-        for i in 0..=self.map_size {
-            let y = rect.min.y + self.cell_size * i as f32 - self.y_axis as f32;
-            shapes.push(Shape::line_segment(
-                [
-                    egui::Pos2::new(rect.min.x, y),
-                    egui::Pos2::new(rect.min.x + self.cell_size * self.map_size as f32, y),
-                ],
-                egui::Stroke::new(
-                    stroke_thickness,
-                    if i == self.map_size {
-                        Color32::RED
-                    } else {
-                        Color32::GRAY
-                    },
-                ),
-            ));
+        let num_horizontal_lines = (rect.height() / self.cell_size).ceil() as i32 + 2;
+        for i in 0..num_horizontal_lines {
+            let y = rect.min.y + (i as f32 * self.cell_size) - offset_y;
+            if y >= rect.min.y - self.cell_size && y <= rect.max.y + self.cell_size {
+                shapes.push(Shape::line_segment(
+                    [
+                        egui::Pos2::new(rect.min.x, y),
+                        egui::Pos2::new(rect.max.x, y),
+                    ],
+                    egui::Stroke::new(stroke_thickness, grid_color),
+                ));
+            }
         }
     }
     pub fn generate_cells(&self, shapes: &mut Vec<Shape>, rect: Rect) {
+        // Calculate center offset to center the map in the viewport
+        let center_offset_x = rect.width() / 2.0 - (self.map_size as f32 * self.cell_size) / 2.0;
+        let center_offset_y = rect.height() / 2.0 - (self.map_size as f32 * self.cell_size) / 2.0;
+        
+        if self.toroidal_display {
+            // Toroidal display: show cells wrapping around infinitely
+            self.draw_cells_toroidal(shapes, rect, center_offset_x, center_offset_y);
+        } else {
+            // Standard display: show cells with centering
+            self.draw_cells_standard(shapes, rect, center_offset_x, center_offset_y);
+        }
+    }
+
+    fn draw_cells_standard(&self, shapes: &mut Vec<Shape>, rect: Rect, center_offset_x: f32, center_offset_y: f32) {
         for c in &self.cells {
-            shapes.push(Shape::rect_filled(
-                Rect {
-                    min: rect.min
-                        + vec2(
-                            self.cell_size * c.0 as f32 - self.x_axis as f32,
-                            self.cell_size * c.1 as f32 - self.y_axis as f32,
-                        ),
-                    max: rect.min
-                        + vec2(
-                            self.cell_size * (c.0 + 1) as f32 - self.x_axis as f32,
-                            self.cell_size * (c.1 + 1) as f32 - self.y_axis as f32,
-                        ),
-                },
-                CornerRadius::ZERO,
-                //TODO: Add a slider for the user on this one that allows them to choose the color
-                //if they want
-                if self.light_mode {
-                    Color32::BLACK
-                } else {
-                    Color32::WHITE
-                },
-            ));
+            let screen_x = rect.min.x + center_offset_x + (c.0 - self.x_axis) as f32 * self.cell_size;
+            let screen_y = rect.min.y + center_offset_y + (c.1 - self.y_axis) as f32 * self.cell_size;
+            
+            let cell_rect = Rect {
+                min: egui::Pos2::new(screen_x, screen_y),
+                max: egui::Pos2::new(screen_x + self.cell_size, screen_y + self.cell_size),
+            };
+            
+            // Only draw cells that are visible in the viewport
+            if rect.intersects(cell_rect) {
+                shapes.push(Shape::rect_filled(
+                    cell_rect,
+                    CornerRadius::ZERO,
+                    if self.light_mode {
+                        Color32::BLACK
+                    } else {
+                        Color32::WHITE
+                    },
+                ));
+            }
+        }
+    }
+
+    fn draw_cells_toroidal(&self, shapes: &mut Vec<Shape>, rect: Rect, center_offset_x: f32, center_offset_y: f32) {
+        // Calculate how many times we need to tile the map to fill the viewport
+        let map_pixel_size = self.map_size as f32 * self.cell_size;
+        
+        // Calculate the range of tiles needed to cover the entire viewport
+        let start_tile_x = ((rect.min.x - center_offset_x) / map_pixel_size).floor() as i32 - 1;
+        let end_tile_x = ((rect.max.x - center_offset_x) / map_pixel_size).ceil() as i32 + 1;
+        let start_tile_y = ((rect.min.y - center_offset_y) / map_pixel_size).floor() as i32 - 1;
+        let end_tile_y = ((rect.max.y - center_offset_y) / map_pixel_size).ceil() as i32 + 1;
+        
+        // Draw the map tiled across the viewport with no gaps
+        for tile_x in start_tile_x..=end_tile_x {
+            for tile_y in start_tile_y..=end_tile_y {
+                let tile_offset_x = tile_x as f32 * map_pixel_size;
+                let tile_offset_y = tile_y as f32 * map_pixel_size;
+                
+                for c in &self.cells {
+                    let screen_x = rect.min.x + center_offset_x + tile_offset_x + (c.0 - self.x_axis) as f32 * self.cell_size;
+                    let screen_y = rect.min.y + center_offset_y + tile_offset_y + (c.1 - self.y_axis) as f32 * self.cell_size;
+                    
+                    let cell_rect = Rect {
+                        min: egui::Pos2::new(screen_x, screen_y),
+                        max: egui::Pos2::new(screen_x + self.cell_size, screen_y + self.cell_size),
+                    };
+                    
+                    // Only draw cells that are visible in the viewport
+                    if rect.intersects(cell_rect) {
+                        shapes.push(Shape::rect_filled(
+                            cell_rect,
+                            CornerRadius::ZERO,
+                            if self.light_mode {
+                                Color32::BLACK
+                            } else {
+                                Color32::WHITE
+                            },
+                        ));
+                    }
+                }
+            }
         }
     }
     ///Function largely exists solely for the purpose of easing the thickness of the gridlines
